@@ -2,7 +2,7 @@
 #GO111MODULE=on 
 
 XAPPNAME=rimedo-ts
-RIMEDO_TS_VERSION := latest
+RIMEDO_TS_VERSION := v0.0.5
 
 build:
 	GOPRIVATE="github.com/onosproject/*" go build -o build/_output/$(XAPPNAME) ./cmd/$(XAPPNAME)

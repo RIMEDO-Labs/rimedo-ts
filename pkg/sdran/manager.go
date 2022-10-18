@@ -4,48 +4,45 @@ package sdran
 
 import (
 	"context"
-	"strconv"
 	"sync"
 
-	"github.com/RIMEDO-Labs/rimedo-ts/pkg/mho"
+	"github.com/RIMEDO-Labs/rimedo-ts/pkg/controller"
+	"github.com/RIMEDO-Labs/rimedo-ts/pkg/monitoring"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/policy"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/rnib"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/southbound/e2"
 	policyAPI "github.com/onosproject/onos-a1-dm/go/policy_schemas/traffic_steering_preference/v2"
-	e2tAPI "github.com/onosproject/onos-api/go/onos/e2t/e2"
-	e2api "github.com/onosproject/onos-api/go/onos/e2t/e2/v1beta1"
-	"github.com/onosproject/onos-e2-sm/servicemodels/e2sm_mho_go/pdubuilder"
 	e2sm_v2_ies "github.com/onosproject/onos-e2-sm/servicemodels/e2sm_mho_go/v2/e2sm-v2-ies"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/logging/service"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
-	control "github.com/onosproject/onos-mho/pkg/mho"
+	nbi "github.com/onosproject/onos-mho/pkg/northbound"
 	"github.com/onosproject/onos-mho/pkg/store"
 )
 
 var log = logging.GetLogger("rimedo-ts", "sdran", "manager")
 
 type Config struct {
-	AppID              string
-	E2tAddress         string
-	E2tPort            int
-	TopoAddress        string
-	TopoPort           int
-	SMName             string
-	SMVersion          string
-	TSPolicySchemePath string
+	AppID       string
+	E2tAddress  string
+	E2tPort     int
+	TopoAddress string
+	TopoPort    int
+	SMName      string
+	SMVersion   string
 }
 
 func NewManager(config Config) *Manager {
 
 	ueStore := store.NewStore()
 	cellStore := store.NewStore()
+	metricStore := store.NewStore()
 	onosPolicyStore := store.NewStore()
 
-	policyMap := make(map[string]*mho.PolicyData)
+	policyMap := make(map[string]*monitoring.PolicyData)
 
-	indCh := make(chan *mho.E2NodeIndication)
-	ctrlReqChs := make(map[string]chan *e2api.ControlMessage)
+	// indCh := make(chan *mho.E2NodeIndication)
+	// ctrlReqChs := make(map[string]chan *e2api.ControlMessage)
 
 	options := e2.Options{
 		AppID:       config.AppID,
@@ -57,35 +54,44 @@ func NewManager(config Config) *Manager {
 		SMVersion:   config.SMVersion,
 	}
 
-	e2Manager, err := e2.NewManager(options, indCh, ctrlReqChs)
+	// e2Manager, err := e2.NewManager(options, indCh, ctrlReqChs)
+	e2Manager, err := e2.NewManager(options, ueStore, cellStore, onosPolicyStore, metricStore, policyMap)
 	if err != nil {
 		log.Warn(err)
 	}
 
 	manager := &Manager{
-		e2Manager:       e2Manager,
-		mhoCtrl:         mho.NewController(indCh, ueStore, cellStore, onosPolicyStore, policyMap),
-		policyManager:   policy.NewPolicyManager(&policyMap),
-		ueStore:         ueStore,
-		cellStore:       cellStore,
+		e2Manager:     e2Manager,
+		monitor:       nil,
+		mhoCtrl:       controller.NewMHOController(metricStore),
+		policyManager: policy.NewPolicyManager(&policyMap),
+		ueStore:       ueStore,
+		cellStore:     cellStore,
+		metricStore:   metricStore,
+		// ueStore:         ueStore,
+		// cellStore:       cellStore,
 		onosPolicyStore: onosPolicyStore,
-		ctrlReqChs:      ctrlReqChs,
-		services:        []service.Service{},
-		mutex:           sync.RWMutex{},
+		// ctrlReqChs:      ctrlReqChs,
+		services: []service.Service{},
+		mutex:    sync.RWMutex{},
 	}
 	return manager
 }
 
 type Manager struct {
-	e2Manager       e2.Manager
-	mhoCtrl         *mho.Controller
-	policyManager   *policy.PolicyManager
-	ueStore         store.Store
-	cellStore       store.Store
+	e2Manager     e2.Manager
+	monitor       *monitoring.Monitor
+	mhoCtrl       *controller.MHOController
+	policyManager *policy.PolicyManager
+	ueStore       store.Store
+	cellStore     store.Store
+	metricStore   store.Store
+	// ueStore         store.Store
+	// cellStore       store.Store
 	onosPolicyStore store.Store
-	ctrlReqChs      map[string]chan *e2api.ControlMessage
-	services        []service.Service
-	mutex           sync.RWMutex
+	// ctrlReqChs      map[string]chan *e2api.ControlMessage
+	services []service.Service
+	mutex    sync.RWMutex
 }
 
 func (m *Manager) Run() {
@@ -101,7 +107,6 @@ func (m *Manager) start() error {
 		log.Warn(err)
 		return err
 	}
-
 	go m.mhoCtrl.Run(context.Background())
 
 	return nil
@@ -120,6 +125,7 @@ func (m *Manager) startNorthboundServer() error {
 	for i := range m.services {
 		s.AddService(m.services[i])
 	}
+	s.AddService(nbi.NewService(m.metricStore))
 
 	doneCh := make(chan error)
 	go func() {
@@ -139,8 +145,8 @@ func (m *Manager) AddService(service service.Service) {
 
 }
 
-func (m *Manager) GetUEs(ctx context.Context) map[string]mho.UeData {
-	output := make(map[string]mho.UeData)
+func (m *Manager) GetUEs(ctx context.Context) map[string]monitoring.UeData {
+	output := make(map[string]monitoring.UeData)
 	chEntries := make(chan *store.Entry, 1024)
 	err := m.ueStore.Entries(ctx, chEntries)
 	if err != nil {
@@ -148,14 +154,14 @@ func (m *Manager) GetUEs(ctx context.Context) map[string]mho.UeData {
 		return output
 	}
 	for entry := range chEntries {
-		ueData := entry.Value.(mho.UeData)
+		ueData := entry.Value.(monitoring.UeData)
 		output[ueData.UeID] = ueData
 	}
 	return output
 }
 
-func (m *Manager) GetCells(ctx context.Context) map[string]mho.CellData {
-	output := make(map[string]mho.CellData)
+func (m *Manager) GetCells(ctx context.Context) map[string]monitoring.CellData {
+	output := make(map[string]monitoring.CellData)
 	chEntries := make(chan *store.Entry, 1024)
 	err := m.cellStore.Entries(ctx, chEntries)
 	if err != nil {
@@ -163,14 +169,14 @@ func (m *Manager) GetCells(ctx context.Context) map[string]mho.CellData {
 		return output
 	}
 	for entry := range chEntries {
-		cellData := entry.Value.(mho.CellData)
+		cellData := entry.Value.(monitoring.CellData)
 		output[cellData.CGIString] = cellData
 	}
 	return output
 }
 
-func (m *Manager) GetPolicies(ctx context.Context) map[string]mho.PolicyData {
-	output := make(map[string]mho.PolicyData)
+func (m *Manager) GetPolicies(ctx context.Context) map[string]monitoring.PolicyData {
+	output := make(map[string]monitoring.PolicyData)
 	chEntries := make(chan *store.Entry, 1024)
 	err := m.onosPolicyStore.Entries(ctx, chEntries)
 	if err != nil {
@@ -178,7 +184,7 @@ func (m *Manager) GetPolicies(ctx context.Context) map[string]mho.PolicyData {
 		return output
 	}
 	for entry := range chEntries {
-		policyData := entry.Value.(mho.PolicyData)
+		policyData := entry.Value.(monitoring.PolicyData)
 		output[policyData.Key] = policyData
 	}
 	return output
@@ -192,67 +198,72 @@ func (m *Manager) SetCellType(ctx context.Context, cellID string, cellType strin
 	return m.e2Manager.SetCellType(ctx, cellID, cellType)
 }
 
-func (m *Manager) GetCell(ctx context.Context, CGI string) *mho.CellData {
+func (m *Manager) GetCell(ctx context.Context, CGI string) *monitoring.CellData {
 
-	return m.mhoCtrl.GetCell(ctx, CGI)
-
-}
-
-func (m *Manager) SetCell(ctx context.Context, cell *mho.CellData) {
-
-	m.mhoCtrl.SetCell(ctx, cell)
+	return m.e2Manager.GetMonitor().GetCell(ctx, CGI)
 
 }
 
-func (m *Manager) AttachUe(ctx context.Context, ue *mho.UeData, CGI string, cgiObject *e2sm_v2_ies.Cgi) {
+func (m *Manager) SetCell(ctx context.Context, cell *monitoring.CellData) {
 
-	m.mhoCtrl.AttachUe(ctx, ue, CGI, cgiObject)
-
-}
-
-func (m *Manager) GetUe(ctx context.Context, ueID string) *mho.UeData {
-
-	return m.mhoCtrl.GetUe(ctx, ueID)
+	m.e2Manager.GetMonitor().SetCell(ctx, cell)
 
 }
 
-func (m *Manager) SetUe(ctx context.Context, ueData *mho.UeData) {
+func (m *Manager) AttachUe(ctx context.Context, ue *monitoring.UeData, CGI string, cgiObject *e2sm_v2_ies.Cgi) {
 
-	m.mhoCtrl.SetUe(ctx, ueData)
-
-}
-
-func (m *Manager) CreatePolicy(ctx context.Context, key string, policy *policyAPI.API) *mho.PolicyData {
-
-	return m.mhoCtrl.CreatePolicy(ctx, key, policy)
+	m.e2Manager.GetMonitor().AttachUe(ctx, ue, CGI, cgiObject)
 
 }
 
-func (m *Manager) GetPolicy(ctx context.Context, key string) *mho.PolicyData {
+func (m *Manager) GetUe(ctx context.Context, ueID string) *monitoring.UeData {
 
-	return m.mhoCtrl.GetPolicy(ctx, key)
+	return m.e2Manager.GetMonitor().GetUe(ctx, ueID)
 
 }
 
-func (m *Manager) SetPolicy(ctx context.Context, key string, policy *mho.PolicyData) {
+func (m *Manager) SetUe(ctx context.Context, ueData *monitoring.UeData) {
 
-	m.mhoCtrl.SetPolicy(ctx, key, policy)
+	m.e2Manager.GetMonitor().SetUe(ctx, ueData)
+
+}
+
+func (m *Manager) CreatePolicy(ctx context.Context, key string, policy *policyAPI.API) *monitoring.PolicyData {
+
+	if m.e2Manager.GetMonitor() == nil {
+		log.Debug("Monitor is NIL")
+	} else {
+		log.Debug("IS NOT")
+	}
+	return m.e2Manager.GetMonitor().CreatePolicy(ctx, key, policy)
+
+}
+
+func (m *Manager) GetPolicy(ctx context.Context, key string) *monitoring.PolicyData {
+
+	return m.e2Manager.GetMonitor().GetPolicy(ctx, key)
+
+}
+
+func (m *Manager) SetPolicy(ctx context.Context, key string, policy *monitoring.PolicyData) {
+
+	m.e2Manager.GetMonitor().SetPolicy(ctx, key, policy)
 
 }
 
 func (m *Manager) DeletePolicy(ctx context.Context, key string) {
 
-	m.mhoCtrl.DeletePolicy(ctx, key)
+	m.e2Manager.GetMonitor().DeletePolicy(ctx, key)
 
 }
 
 func (m *Manager) GetPolicyStore() *store.Store {
-	return m.mhoCtrl.GetPolicyStore()
+	return m.e2Manager.GetMonitor().GetPolicyStore()
 }
 
-func (m *Manager) GetControlChannelsMap(ctx context.Context) map[string]chan *e2api.ControlMessage {
-	return m.ctrlReqChs
-}
+// func (m *Manager) GetControlChannelsMap(ctx context.Context) map[string]chan *e2api.ControlMessage {
+// 	return m.ctrlReqChs
+// }
 
 func (m *Manager) GetPolicyManager() *policy.PolicyManager {
 	return m.policyManager
@@ -279,53 +290,53 @@ func (m *Manager) SwitchUeBetweenCells(ctx context.Context, ueID string, targetC
 		m.SetCell(ctx, targetCell)
 		m.SetCell(ctx, servingCell)
 
-		controlChannel := m.ctrlReqChs[chosenUe.E2NodeID]
+		// controlChannel := m.ctrlReqChs[chosenUe.E2NodeID]
 
-		controlHandler := &control.E2SmMhoControlHandler{
-			NodeID:            chosenUe.E2NodeID,
-			ControlAckRequest: e2tAPI.ControlAckRequest_NO_ACK,
-		}
+		// controlHandler := &control.E2SmMhoControlHandler{
+		// 	NodeID:            chosenUe.E2NodeID,
+		// 	ControlAckRequest: e2tAPI.ControlAckRequest_NO_ACK,
+		// }
 
-		ueIDnum, err := strconv.Atoi(chosenUe.UeID)
-		if err != nil {
-			log.Errorf("SendHORequest() failed to convert string %v to decimal number - assumption is not satisfied (UEID is a decimal number): %v", chosenUe.UeID, err)
-		}
+		// ueIDnum, err := strconv.Atoi(chosenUe.UeID)
+		// if err != nil {
+		// 	log.Errorf("SendHORequest() failed to convert string %v to decimal number - assumption is not satisfied (UEID is a decimal number): %v", chosenUe.UeID, err)
+		// }
 
-		ueIdentity, err := pdubuilder.CreateUeIDGNb(int64(ueIDnum), []byte{0xAA, 0xBB, 0xCC}, []byte{0xDD}, []byte{0xCC, 0xC0}, []byte{0xFC})
-		if err != nil {
-			log.Errorf("SendHORequest() Failed to create UEID: %v", err)
-		}
+		// ueIdentity, err := pdubuilder.CreateUeIDGNb(int64(ueIDnum), []byte{0xAA, 0xBB, 0xCC}, []byte{0xDD}, []byte{0xCC, 0xC0}, []byte{0xFC})
+		// if err != nil {
+		// 	log.Errorf("SendHORequest() Failed to create UEID: %v", err)
+		// }
 
-		servingPlmnIDBytes := servingCell.CGI.GetNRCgi().GetPLmnidentity().GetValue()
-		servingNCI := servingCell.CGI.GetNRCgi().GetNRcellIdentity().GetValue().GetValue()
-		servingNCILen := servingCell.CGI.GetNRCgi().GetNRcellIdentity().GetValue().GetLen()
+		// servingPlmnIDBytes := servingCell.CGI.GetNRCgi().GetPLmnidentity().GetValue()
+		// servingNCI := servingCell.CGI.GetNRCgi().GetNRcellIdentity().GetValue().GetValue()
+		// servingNCILen := servingCell.CGI.GetNRCgi().GetNRcellIdentity().GetValue().GetLen()
 
-		go func() {
-			if controlHandler.ControlHeader, err = controlHandler.CreateMhoControlHeader(servingNCI, servingNCILen, 1, servingPlmnIDBytes); err == nil {
+		// go func() {
+		// 	if controlHandler.ControlHeader, err = controlHandler.CreateMhoControlHeader(servingNCI, servingNCILen, 1, servingPlmnIDBytes); err == nil {
 
-				if controlHandler.ControlMessage, err = controlHandler.CreateMhoControlMessage(servingCell.CGI, ueIdentity, targetCell.CGI); err == nil {
+		// 		if controlHandler.ControlMessage, err = controlHandler.CreateMhoControlMessage(servingCell.CGI, ueIdentity, targetCell.CGI); err == nil {
 
-					if controlRequest, err := controlHandler.CreateMhoControlRequest(); err == nil {
+		// 			if controlRequest, err := controlHandler.CreateMhoControlRequest(); err == nil {
 
-						controlChannel <- controlRequest
-						log.Infof("\nCONTROL MESSAGE: UE [ID:%v, 5QI:%v] switched between CELLs [CGI:%v -> CGI:%v]\n", chosenUe.UeID, chosenUe.FiveQi, servingCell.CGIString, targetCell.CGIString)
+		// 				controlChannel <- controlRequest
+		// 				log.Infof("\nCONTROL MESSAGE: UE [ID:%v, 5QI:%v] switched between CELLs [CGI:%v -> CGI:%v]\n", chosenUe.UeID, chosenUe.FiveQi, servingCell.CGIString, targetCell.CGIString)
 
-					} else {
-						log.Warn("Control request problem :(", err)
-					}
-				} else {
-					log.Warn("Control message problem :(", err)
-				}
-			} else {
-				log.Warn("Control header problem :(", err)
-			}
-		}()
+		// 			} else {
+		// 				log.Warn("Control request problem :(", err)
+		// 			}
+		// 		} else {
+		// 			log.Warn("Control message problem :(", err)
+		// 		}
+		// 	} else {
+		// 		log.Warn("Control header problem :(", err)
+		// 	}
+		// }()
 
 	}
 
 }
 
-func shouldBeSwitched(ue mho.UeData, cgi string) bool {
+func shouldBeSwitched(ue monitoring.UeData, cgi string) bool {
 
 	servingCgi := ue.CGIString
 	if servingCgi == cgi {

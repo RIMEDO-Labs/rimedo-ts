@@ -6,6 +6,7 @@ import (
 	"context"
 
 	topoapi "github.com/onosproject/onos-api/go/onos/topo"
+	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	toposdk "github.com/onosproject/onos-ric-sdk-go/pkg/topo"
 )
@@ -43,6 +44,46 @@ func NewClient(options Options) (Client, error) {
 
 type Client struct {
 	client toposdk.Client
+}
+
+func (c *Client) HasRcRANFunction(ctx context.Context, nodeID topoapi.ID, oid string) bool {
+	e2Node, err := c.GetE2NodeAspects(ctx, nodeID)
+	if err != nil {
+		return false
+	}
+
+	for _, sm := range e2Node.GetServiceModels() {
+		if sm.OID == oid {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Client) GetCells(ctx context.Context, nodeID topoapi.ID) ([]*topoapi.E2Cell, error) {
+	filter := &topoapi.Filters{
+		RelationFilter: &topoapi.RelationFilter{SrcId: string(nodeID),
+			RelationKind: topoapi.CONTAINS,
+			TargetKind:   ""}}
+	objects, err := c.client.List(ctx, toposdk.WithListFilters(filter))
+	if err != nil {
+		return nil, err
+	}
+	var cells []*topoapi.E2Cell
+	for _, obj := range objects {
+		targetEntity := obj.GetEntity()
+		if targetEntity.GetKindID() == topoapi.E2CELL {
+			cellObject := &topoapi.E2Cell{}
+			err = obj.GetAspect(cellObject)
+			if err == nil {
+				cells = append(cells, cellObject)
+			}
+		}
+	}
+	if len(cells) == 0 {
+		return nil, errors.New(errors.NotFound, "there is no cell to subscribe for e2 node %s", nodeID)
+	}
+	return cells, nil
 }
 
 func getControlRelationFilter() *topoapi.Filters {

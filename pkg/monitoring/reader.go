@@ -1,6 +1,6 @@
 // Copy from onosproject/onos-mho/pkg/monitoring/monitor.go
 // modified by RIMEDO-Labs team
-package mho
+package monitoring
 
 import (
 	"fmt"

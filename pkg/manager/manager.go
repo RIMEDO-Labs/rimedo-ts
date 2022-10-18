@@ -10,7 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/RIMEDO-Labs/rimedo-ts/pkg/mho"
+	// "github.com/RIMEDO-Labs/rimedo-ts/pkg/mho"
+	"github.com/RIMEDO-Labs/rimedo-ts/pkg/monitoring"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/northbound/a1"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/sdran"
 	policyAPI "github.com/onosproject/onos-a1-dm/go/policy_schemas/traffic_steering_preference/v2"
@@ -185,7 +186,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 				info = info + fmt.Sprintf(" - (%v) -", policyObject.API.TSPResources[i].Preference)
 				for j := range policyObject.API.TSPResources[i].CellIDList {
 					nci := *policyObject.API.TSPResources[i].CellIDList[j].CID.NcI
-					plmnId, _ := mho.GetPlmnIdFromMccMnc(policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc, policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc)
+					plmnId, _ := monitoring.GetPlmnIdFromMccMnc(policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc, policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc)
 					cgi := PlmnIDNciToCGI(plmnId, uint64(nci))
 					info = info + fmt.Sprintf(" CELL [CGI:%v],", cgi)
 				}
@@ -241,10 +242,10 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 		for j := range cgiKeys {
 
 			cgi := ues[keys[i]].CgiTable[cgiKeys[j]]
-			nci := int64(mho.GetNciFromCellGlobalID(cgi))
-			plmnIdBytes := mho.GetPlmnIDBytesFromCellGlobalID(cgi)
-			plmnId := mho.PlmnIDBytesToInt(plmnIdBytes)
-			mcc, mnc := mho.GetMccMncFromPlmnID(plmnId)
+			nci := int64(monitoring.GetNciFromCellGlobalID(cgi))
+			plmnIdBytes := monitoring.GetPlmnIDBytesFromCellGlobalID(cgi)
+			plmnId := monitoring.PlmnIDBytesToInt(plmnIdBytes)
+			mcc, mnc := monitoring.GetMccMncFromPlmnID(plmnId)
 			cellID := policyAPI.CellID{
 				CID: policyAPI.CID{
 					NcI: &nci,
@@ -261,7 +262,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 		}
 
 		tsResult := policyManager.GetTsResultForUEV2(scopeUe, rsrps, cellIDs)
-		plmnId, err := mho.GetPlmnIdFromMccMnc(tsResult.PlmnID.Mcc, tsResult.PlmnID.Mnc)
+		plmnId, err := monitoring.GetPlmnIdFromMccMnc(tsResult.PlmnID.Mcc, tsResult.PlmnID.Mnc)
 
 		if err != nil {
 			log.Warnf("Cannot get PLMN ID from these MCC and MNC parameters:%v,%v.", tsResult.PlmnID.Mcc, tsResult.PlmnID.Mnc)

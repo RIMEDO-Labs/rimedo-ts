@@ -1,6 +1,6 @@
 // Copy from onosproject/onos-mho/pkg/monitoring/monitor.go
 // modified by RIMEDO-Labs team
-package mho
+package monitoring
 
 import (
 	policyAPI "github.com/onosproject/onos-a1-dm/go/policy_schemas/traffic_steering_preference/v2"

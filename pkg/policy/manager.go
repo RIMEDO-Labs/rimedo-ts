@@ -9,7 +9,8 @@ import (
 	"math"
 	"os"
 
-	"github.com/RIMEDO-Labs/rimedo-ts/pkg/mho"
+	// "github.com/RIMEDO-Labs/rimedo-ts/pkg/mho"
+	"github.com/RIMEDO-Labs/rimedo-ts/pkg/monitoring"
 	policyAPI "github.com/onosproject/onos-a1-dm/go/policy_schemas/traffic_steering_preference/v2"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/xeipuuv/gojsonschema"
@@ -29,7 +30,7 @@ type PolicySchemaValidatorV2 struct {
 	schemePath string
 }
 
-func NewPolicyManager(policyMap *map[string]*mho.PolicyData) *PolicyManager {
+func NewPolicyManager(policyMap *map[string]*monitoring.PolicyData) *PolicyManager {
 
 	var POLICY_WEIGHTS = map[string]int{
 		"DEFAULT": 0.0,
@@ -49,11 +50,11 @@ func NewPolicyManager(policyMap *map[string]*mho.PolicyData) *PolicyManager {
 
 type PolicyManager struct {
 	validator     *PolicySchemaValidatorV2
-	policyMap     *map[string]*mho.PolicyData
+	policyMap     *map[string]*monitoring.PolicyData
 	preferenceMap map[string]int
 }
 
-func (m *PolicyManager) ReadPolicyObjectFromFileV2(jsonPath string, policyObject *mho.PolicyData) error {
+func (m *PolicyManager) ReadPolicyObjectFromFileV2(jsonPath string, policyObject *monitoring.PolicyData) error {
 
 	jsonFile, err := m.LoadPolicyJsonFromFileV2(jsonPath)
 	if err != nil {
@@ -78,7 +79,7 @@ func (m *PolicyManager) ReadPolicyObjectFromFileV2(jsonPath string, policyObject
 	return nil
 }
 
-func (m *PolicyManager) CheckPerUePolicyV2(ueScope policyAPI.Scope, policyObject *mho.PolicyData) bool {
+func (m *PolicyManager) CheckPerUePolicyV2(ueScope policyAPI.Scope, policyObject *monitoring.PolicyData) bool {
 
 	if policyObject.API.Scope.UeID == nil {
 		return false
@@ -116,7 +117,7 @@ func (m *PolicyManager) CheckPerUePolicyV2(ueScope policyAPI.Scope, policyObject
 	return true
 }
 
-func (m *PolicyManager) CheckPerSlicePolicyV2(ueScope policyAPI.Scope, policyObject *mho.PolicyData) bool {
+func (m *PolicyManager) CheckPerSlicePolicyV2(ueScope policyAPI.Scope, policyObject *monitoring.PolicyData) bool {
 
 	if policyObject.API.Scope.SliceID == nil {
 		return false
@@ -191,7 +192,7 @@ func (m *PolicyManager) GetPreferenceV2(ueScope policyAPI.Scope, queryCellId pol
 	return preference
 }
 
-func (m *PolicyManager) AddPolicyV2(policyId string, policyDir string, policyObject *mho.PolicyData) (*mho.PolicyData, error) {
+func (m *PolicyManager) AddPolicyV2(policyId string, policyDir string, policyObject *monitoring.PolicyData) (*monitoring.PolicyData, error) {
 
 	policyPath := policyDir + policyId
 	err := m.ReadPolicyObjectFromFileV2(policyPath, policyObject)
@@ -222,7 +223,7 @@ func (m *PolicyManager) DisablePolicyV2(policyId string) bool {
 	return false
 }
 
-func (m *PolicyManager) GetPolicyV2(policyId string) (*mho.PolicyData, bool) {
+func (m *PolicyManager) GetPolicyV2(policyId string) (*monitoring.PolicyData, bool) {
 
 	if val, ok := (*m.policyMap)[policyId]; ok {
 		return val, ok
@@ -243,7 +244,7 @@ func (m *PolicyManager) ValidatePolicyJsonSchemaV2(jsonPath string) (bool, error
 	return result.Valid(), nil
 }
 
-func (m *PolicyManager) UnmarshalPolicyJsonV2(jsonFile []byte, policyObject *mho.PolicyData) error {
+func (m *PolicyManager) UnmarshalPolicyJsonV2(jsonFile []byte, policyObject *monitoring.PolicyData) error {
 
 	if err := json.Unmarshal(jsonFile, policyObject.API); err != nil {
 		log.Error("Couldn't read PolicyObject from file")
@@ -273,7 +274,7 @@ func (m *PolicyManager) LoadPolicyJsonFromFileV2(path string) ([]byte, error) {
 
 }
 
-func (m *PolicyManager) isSimilarEnforced(policyData *mho.PolicyData) bool {
+func (m *PolicyManager) isSimilarEnforced(policyData *monitoring.PolicyData) bool {
 	for _, policy := range *m.policyMap {
 
 		sameSlice := false

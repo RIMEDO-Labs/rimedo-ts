@@ -17,18 +17,17 @@ var log = logging.GetLogger("rimedo-ts")
 
 func main() {
 
-	log.SetLevel(logging.InfoLevel)
+	log.SetLevel(logging.DebugLevel)
 	log.Info("Starting RIMEDO Labs Traffic Steering xAPP")
 
 	sdranConfig := sdran.Config{
-		AppID:              "rimedo-ts",
-		E2tAddress:         "onos-e2t",
-		E2tPort:            5150,
-		TopoAddress:        "onos-topo",
-		TopoPort:           5150,
-		SMName:             "oran-e2sm-mho",
-		SMVersion:          "v2",
-		TSPolicySchemePath: "/data/schemas/ORAN_TrafficSteeringPreference_v102.json",
+		AppID:       "rimedo-ts",
+		E2tAddress:  "onos-e2t",
+		E2tPort:     5150,
+		TopoAddress: "onos-topo",
+		TopoPort:    5150,
+		SMName:      "oran-e2sm-rc",
+		SMVersion:   "v1",
 	}
 
 	a1Config := a1.Config{
