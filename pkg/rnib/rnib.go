@@ -4,8 +4,10 @@ package rnib
 
 import (
 	"context"
+	"fmt"
 
 	topoapi "github.com/onosproject/onos-api/go/onos/topo"
+	measurmentStore "github.com/onosproject/onos-kpimon/pkg/store/measurements"
 	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	toposdk "github.com/onosproject/onos-ric-sdk-go/pkg/topo"
@@ -15,6 +17,9 @@ var log = logging.GetLogger("rimedo-ts", "rnib")
 
 type TopoClient interface {
 	WatchE2Connections(ctx context.Context, ch chan topoapi.Event) error
+	GetCells(ctx context.Context, nodeID topoapi.ID) ([]*topoapi.E2Cell, error)
+	GetE2NodeAspects(ctx context.Context, nodeID topoapi.ID) (*topoapi.E2Node, error)
+	E2NodeIDs(ctx context.Context) ([]topoapi.ID, error)
 }
 
 type Options struct {
@@ -46,7 +51,7 @@ type Client struct {
 	client toposdk.Client
 }
 
-func (c *Client) HasRcRANFunction(ctx context.Context, nodeID topoapi.ID, oid string) bool {
+func (c *Client) HasRANFunction(ctx context.Context, nodeID topoapi.ID, oid string) bool {
 	e2Node, err := c.GetE2NodeAspects(ctx, nodeID)
 	if err != nil {
 		return false
@@ -58,6 +63,84 @@ func (c *Client) HasRcRANFunction(ctx context.Context, nodeID topoapi.ID, oid st
 		}
 	}
 	return false
+}
+
+func (c *Client) UpdateCellAspects(ctx context.Context, cellID topoapi.ID, measItems []measurmentStore.MeasurementItem) error {
+	object, err := c.client.Get(ctx, cellID)
+	if err != nil {
+		return err
+	}
+
+	if object != nil && object.GetEntity().GetKindID() == topoapi.E2CELL {
+		cellObject := &topoapi.E2Cell{}
+		err := object.GetAspect(cellObject)
+		if err != nil {
+			return err
+		}
+		cellObject.KpiReports = make(map[string]uint32)
+
+		tmpTs := uint64(0)
+		for _, measItem := range measItems {
+			for _, record := range measItem.MeasurementRecords {
+				if tmpTs <= record.Timestamp {
+					tmpTs = record.Timestamp
+					switch record.MeasurementValue.(type) {
+					case int32:
+						cellObject.KpiReports[record.MeasurementName] = uint32(record.MeasurementValue.(int32))
+
+					case int64:
+						cellObject.KpiReports[record.MeasurementName] = uint32(record.MeasurementValue.(int64))
+
+					default:
+						cellObject.KpiReports[record.MeasurementName] = uint32(0)
+					}
+				}
+			}
+		}
+
+		err = object.SetAspect(cellObject)
+		if err != nil {
+			return err
+		}
+		err = c.client.Update(ctx, object)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) GetCellTopoID(ctx context.Context, coi string, nodeID topoapi.ID) (topoapi.ID, error) {
+	cells, err := c.GetCells(ctx, nodeID)
+	if err != nil {
+		return "", err
+	}
+
+	for _, cell := range cells {
+		if coi == cell.CellObjectID {
+			return topoapi.ID(fmt.Sprintf("%s/%s", string(nodeID), cell.CellGlobalID.Value)), nil
+		}
+	}
+	return "", errors.NewNotFound("E2Cell not found with CellObjectID")
+}
+
+// E2NodeIDs lists all of connected E2 nodes
+func (c *Client) E2NodeIDs(ctx context.Context, oid string) ([]topoapi.ID, error) {
+	objects, err := c.client.List(ctx, toposdk.WithListFilters(getControlRelationFilter()))
+	if err != nil {
+		return nil, err
+	}
+
+	e2NodeIDs := make([]topoapi.ID, len(objects))
+	for _, object := range objects {
+		relation := object.Obj.(*topoapi.Object_Relation)
+		e2NodeID := relation.Relation.TgtEntityID
+		if c.HasRANFunction(ctx, e2NodeID, oid) {
+			e2NodeIDs = append(e2NodeIDs, e2NodeID)
+		}
+	}
+
+	return e2NodeIDs, nil
 }
 
 func (c *Client) GetCells(ctx context.Context, nodeID topoapi.ID) ([]*topoapi.E2Cell, error) {

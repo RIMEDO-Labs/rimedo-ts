@@ -5,6 +5,7 @@ package e2
 
 import (
 	"context"
+	"sort"
 	"strings"
 
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/monitoring"
@@ -12,40 +13,56 @@ import (
 	prototypes "github.com/gogo/protobuf/types"
 	e2api "github.com/onosproject/onos-api/go/onos/e2t/e2/v1beta1"
 	topoapi "github.com/onosproject/onos-api/go/onos/topo"
+	"github.com/onosproject/onos-e2-sm/servicemodels/e2sm_kpm_v2_go/pdubuilder"
+	e2smkpmv2 "github.com/onosproject/onos-e2-sm/servicemodels/e2sm_kpm_v2_go/v2/e2sm-kpm-v2-go"
+	"github.com/onosproject/onos-kpimon/pkg/store/actions"
+	actionsstore "github.com/onosproject/onos-kpimon/pkg/store/actions"
+	"github.com/onosproject/onos-kpimon/pkg/store/measurements"
+	subutils "github.com/onosproject/onos-kpimon/pkg/utils/subscription"
 	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-mho/pkg/broker"
 	"github.com/onosproject/onos-mho/pkg/store"
 	"github.com/onosproject/onos-mho/pkg/utils/control"
-	"github.com/onosproject/onos-mho/pkg/utils/subscription"
+	rcSub "github.com/onosproject/onos-mho/pkg/utils/subscription"
 	e2client "github.com/onosproject/onos-ric-sdk-go/pkg/e2/v1beta1"
+	"google.golang.org/protobuf/proto"
 )
 
 var log = logging.GetLogger("rimedo-ts", "e2", "manager")
 
 const (
-	oid_rc  = "1.3.6.1.4.1.53148.1.1.2.3"
-	oid_kpm = "1.3.6.1.4.1.53148.1.2.2.2"
+	oidRc  = "1.3.6.1.4.1.53148.1.1.2.3"
+	oidKpm = "1.3.6.1.4.1.53148.1.2.2.2"
 )
 
 type Options struct {
-	AppID       string
-	E2tAddress  string
-	E2tPort     int
-	TopoAddress string
-	TopoPort    int
-	SMName      string
-	SMVersion   string
+	AppID        string
+	E2tAddress   string
+	E2tPort      int
+	TopoAddress  string
+	TopoPort     int
+	SmRcName     string
+	SmRcVersion  string
+	SmKpmName    string
+	SmKpmVersion string
 }
 
-func NewManager(options Options, ueStore store.Store, cellStore store.Store, onosPolicyStore store.Store, metricStore store.Store, policies map[string]*monitoring.PolicyData) (Manager, error) {
+func NewManager(options Options, metricStore store.Store, actionStore actions.Store, measurementStore measurements.Store, nodeManager *monitoring.NodeManager) (Manager, error) {
 
-	smName := e2client.ServiceModelName(options.SMName)
-	smVer := e2client.ServiceModelVersion(options.SMVersion)
+	smRcName := e2client.ServiceModelName(options.SmRcName)
+	smRcVer := e2client.ServiceModelVersion(options.SmRcVersion)
+	smKpmName := e2client.ServiceModelName(options.SmKpmName)
+	smKpmVer := e2client.ServiceModelVersion(options.SmKpmVersion)
 	appID := e2client.AppID(options.AppID)
-	e2Client := e2client.NewClient(
+	e2RcClient := e2client.NewClient(
 		e2client.WithAppID(appID),
-		e2client.WithServiceModel(smName, smVer),
+		e2client.WithServiceModel(smRcName, smRcVer),
+		e2client.WithE2TAddress(options.E2tAddress, options.E2tPort),
+	)
+	e2KpmClient := e2client.NewClient(
+		e2client.WithAppID(appID),
+		e2client.WithServiceModel(smKpmName, smKpmVer),
 		e2client.WithE2TAddress(options.E2tAddress, options.E2tPort),
 	)
 
@@ -60,34 +77,44 @@ func NewManager(options Options, ueStore store.Store, cellStore store.Store, ono
 	}
 
 	return Manager{
-		e2client:   e2Client,
-		rnibClient: rnibClient,
-		streams:    broker.NewBroker(),
-		monitor:    nil,
+		e2RcClient:  e2RcClient,
+		e2KpmClient: e2KpmClient,
+		rnibClient:  rnibClient,
+		streams:     broker.NewBroker(),
+		// monitor:     nil,
 		// indCh:       indCh,
 		// ctrlReqChs:  ctrlReqChs,
-		smModelName:     smName,
-		ueStore:         ueStore,
-		cellStore:       cellStore,
-		onosPolicyStore: onosPolicyStore,
-		metricStore:     metricStore,
-		policies:        policies,
+		smRcModelName:  smRcName,
+		smKpmModelName: smKpmName,
+		// ueStore:          ueStore,
+		// cellStore:        cellStore,
+		// onosPolicyStore:  onosPolicyStore,
+		metricStore:      metricStore,
+		actionStore:      actionStore,
+		measurementStore: measurementStore,
+		// policies:         policies,
+		nodeManager: nodeManager,
 	}, nil
 }
 
 type Manager struct {
-	e2client   e2client.Client
-	rnibClient rnib.Client
-	streams    broker.Broker
-	monitor    *monitoring.Monitor
+	e2RcClient  e2client.Client
+	e2KpmClient e2client.Client
+	rnibClient  rnib.Client
+	streams     broker.Broker
+	// monitorRc     *monitoring.Monitor
 	// indCh       chan *mho.E2NodeIndication
 	// ctrlReqChs  map[string]chan *e2api.ControlMessage
-	smModelName     e2client.ServiceModelName
-	ueStore         store.Store
-	cellStore       store.Store
-	onosPolicyStore store.Store
-	metricStore     store.Store
-	policies        map[string]*monitoring.PolicyData
+	smRcModelName  e2client.ServiceModelName
+	smKpmModelName e2client.ServiceModelName
+	// ueStore          store.Store
+	// cellStore        store.Store
+	// onosPolicyStore  store.Store
+	metricStore      store.Store
+	actionStore      actions.Store
+	measurementStore measurements.Store
+	// policies         map[string]*monitoring.PolicyData
+	nodeManager *monitoring.NodeManager
 }
 
 func (m *Manager) Start() error {
@@ -100,8 +127,63 @@ func (m *Manager) Start() error {
 		}
 	}()
 
+	// go func() {
+	// 	ctx, cancel := context.WithCancel(context.Background())
+	// 	defer cancel()
+	// 	err := m.watchConfigChanges(ctx)
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// }()
+
 	return nil
 }
+
+// func (m *Manager) watchConfigChanges(ctx context.Context) error {
+// 	ch := make(chan event.Event)
+// 	err := m.appConfig.Watch(ctx, ch)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	// Deletes all of subscriptions
+// 	for configEvent := range ch {
+// 		log.Debugf("Config event is received: %v", configEvent)
+// 		if configEvent.Key == utils.ReportPeriodConfigPath {
+// 			channelIDs := m.streams.ChannelIDs()
+// 			for _, channelID := range channelIDs {
+// 				_, err := m.streams.CloseStream(ctx, channelID)
+// 				if err != nil {
+// 					log.Warn(err)
+// 					return err
+// 				}
+
+// 			}
+// 		}
+
+// 	}
+// 	// Gets all of connected E2 nodes and creates new subscriptions based on new report interval
+// 	e2NodeIDs, err := m.rnibClient.E2NodeIDs(ctx, oidKpm)
+// 	if err != nil {
+// 		log.Warn(err)
+// 		return err
+// 	}
+
+// 	for _, e2NodeID := range e2NodeIDs {
+// 		if !m.rnibClient.HasRANFunction(ctx, e2NodeID, oidKpm) {
+// 			continue
+// 		}
+// 		go func(e2NodeID topoapi.ID) {
+// 			err := m.createSubscription(ctx, e2NodeID, false)
+// 			if err != nil {
+// 				log.Warn(err)
+// 			}
+// 		}(e2NodeID)
+// 	}
+
+// 	return nil
+
+// }
 
 func (m *Manager) watchE2Connections(ctx context.Context) error {
 	ch := make(chan topoapi.Event)
@@ -115,15 +197,19 @@ func (m *Manager) watchE2Connections(ctx context.Context) error {
 		if topoEvent.Type == topoapi.EventType_ADDED || topoEvent.Type == topoapi.EventType_NONE {
 			relation := topoEvent.Object.Obj.(*topoapi.Object_Relation)
 			e2NodeID := relation.Relation.TgtEntityID
-
-			if !m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid_rc) && !m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid_kpm) {
+			var smRc bool
+			if m.rnibClient.HasRANFunction(ctx, e2NodeID, oidRc) {
+				smRc = true
+			} else if m.rnibClient.HasRANFunction(ctx, e2NodeID, oidKpm) {
+				smRc = false
+			} else {
 				log.Debugf("Received topo event does not have RC or KPM RAN function for RIMEDO TS xApp - %v", topoEvent)
 				continue
 			}
 
 			go func() {
 				log.Debugf("start creating subscription %v", topoEvent)
-				err := m.createSubscription(ctx, e2NodeID)
+				err := m.createSubscription(ctx, e2NodeID, smRc)
 				if err != nil {
 					log.Warn(err)
 				}
@@ -152,11 +238,11 @@ func (m *Manager) watchE2Connections(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			if m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid_rc) {
+			if m.rnibClient.HasRANFunction(ctx, e2NodeID, oidRc) {
 				for _, cellID := range cellIDs {
 					log.Debugf("cell removed, e2NodeID:%v, cellID:%v", e2NodeID, cellID.CellGlobalID.GetValue())
 				}
-			} else if m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid_kpm) {
+			} else if m.rnibClient.HasRANFunction(ctx, e2NodeID, oidKpm) {
 				for _, coi := range cellIDs {
 					key := measurements.Key{
 						NodeID: string(e2NodeID),
@@ -208,7 +294,7 @@ func (m *Manager) watchMHOChanges(ctx context.Context, e2nodeID topoapi.ID) {
 				if err != nil {
 					log.Error(err)
 				}
-				node := m.e2client.Node(e2client.NodeID(e2nodeID))
+				node := m.e2RcClient.Node(e2client.NodeID(e2nodeID))
 				outcome, err := node.Control(ctx, &e2api.ControlMessage{
 					Header:  header,
 					Payload: payload,
@@ -228,18 +314,7 @@ func (m *Manager) watchMHOChanges(ctx context.Context, e2nodeID topoapi.ID) {
 	}
 }
 
-func (m *Manager) createSubscription(ctx context.Context, e2nodeID topoapi.ID) error {
-	log.Debug("I'm creating subscription")
-	eventTriggerData, err := subscription.CreateEventTriggerDefinition()
-	if err != nil {
-		return err
-	}
-
-	log.Debug("I'm creating subscription action")
-	actions, err := subscription.CreateSubscriptionAction()
-	if err != nil {
-		log.Warn(err)
-	}
+func (m *Manager) createSubscription(ctx context.Context, e2nodeID topoapi.ID, rcSm bool) error {
 
 	log.Debug("I'm getting E2 Node aspects")
 	aspects, err := m.rnibClient.GetE2NodeAspects(ctx, e2nodeID)
@@ -247,53 +322,195 @@ func (m *Manager) createSubscription(ctx context.Context, e2nodeID topoapi.ID) e
 		return err
 	}
 
-	log.Debug("I'm getting RAN function")
-	_, err = m.getRanFunction(aspects.ServiceModels)
-	if err != nil {
-		return err
+	if rcSm {
+		log.Debug("I'm creating subscription")
+		eventTriggerData, err := rcSub.CreateEventTriggerDefinition()
+		if err != nil {
+			return err
+		}
+
+		log.Debug("I'm creating subscription action")
+		actions, err := rcSub.CreateSubscriptionAction()
+		if err != nil {
+			log.Warn(err)
+		}
+
+		log.Debug("I'm getting RAN function")
+		_, err = m.getRcRanFunction(aspects.ServiceModels)
+		if err != nil {
+			return err
+		}
+
+		log.Debug("I'm creating subscription specs")
+		ch := make(chan e2api.Indication)
+		node := m.e2RcClient.Node(e2client.NodeID(e2nodeID))
+		subName := "rimedo-ts-rc-subscription"
+		subSpec := e2api.SubscriptionSpec{
+			Actions: actions,
+			EventTrigger: e2api.EventTrigger{
+				Payload: eventTriggerData,
+			},
+		}
+
+		log.Debug("I'm subscribing")
+		channelID, err := node.Subscribe(ctx, subName, subSpec, ch)
+		if err != nil {
+			log.Debug("There is an error")
+			log.Warn(err)
+			return err
+		}
+
+		log.Debug("I'm opening reader")
+		streamReader, err := m.streams.OpenReader(ctx, node, subName, channelID, subSpec)
+		if err != nil {
+			return err
+		}
+		go m.sendIndicationOnStream(streamReader.StreamID(), ch)
+
+		log.Debug("I'm here, I mean in E2 Manager befor creating Monitor")
+		monitor := monitoring.NewMonitorRC(streamReader, e2nodeID, m.metricStore, m.nodeManager)
+
+		err = monitor.Start(ctx)
+		if err != nil {
+			log.Warn(err)
+		}
+
+	} else {
+		reportStyles, err := m.getKpmReportStyles(aspects.ServiceModels)
+		if err != nil {
+			log.Warn(err)
+			return err
+		}
+
+		cells, err := m.rnibClient.GetCells(ctx, e2nodeID)
+		if err != nil {
+			log.Warn(err)
+			return err
+		}
+
+		reportPeriod := 1000
+
+		eventTriggerData, err := subutils.CreateEventTriggerData(int64(reportPeriod))
+		if err != nil {
+			log.Warn(err)
+			return err
+		}
+
+		granularityPeriod := 1000
+
+		for _, reportStyle := range reportStyles {
+			actions, err := m.createSubscriptionActions(ctx, reportStyle, cells, int64(granularityPeriod))
+			if err != nil {
+				log.Warn(err)
+				return err
+			}
+			measurements := reportStyle.Measurements
+
+			ch := make(chan e2api.Indication)
+			node := m.e2KpmClient.Node(e2client.NodeID(e2nodeID))
+			subName := "onos-kpimon-subscription"
+
+			subSpec := e2api.SubscriptionSpec{
+				Actions: actions,
+				EventTrigger: e2api.EventTrigger{
+					Payload: eventTriggerData,
+				},
+			}
+
+			channelID, err := node.Subscribe(ctx, subName, subSpec, ch)
+			if err != nil {
+				return err
+			}
+
+			log.Debugf("Channel ID:%s", channelID)
+			streamReader, err := m.streams.OpenReader(ctx, node, subName, channelID, subSpec)
+			if err != nil {
+				return err
+			}
+
+			go m.sendIndicationOnStream(streamReader.StreamID(), ch)
+			monitor := monitoring.NewMonitorKPM(streamReader, m.measurementStore, m.actionStore, measurements, e2nodeID, m.rnibClient, m.nodeManager)
+			err = monitor.Start(ctx)
+			if err != nil {
+				log.Warn(err)
+			}
+
+		}
+
 	}
-
-	log.Debug("I'm creating subscription specs")
-	ch := make(chan e2api.Indication)
-	node := m.e2client.Node(e2client.NodeID(e2nodeID))
-	subName := "rimedo-ts-subscription"
-	subSpec := e2api.SubscriptionSpec{
-		Actions: actions,
-		EventTrigger: e2api.EventTrigger{
-			Payload: eventTriggerData,
-		},
-	}
-
-	log.Debug("I'm subscribing")
-	channelID, err := node.Subscribe(ctx, subName, subSpec, ch)
-	if err != nil {
-		log.Debug("There is an error")
-		log.Warn(err)
-		return err
-	}
-
-	log.Debug("I'm opening reader")
-	streamReader, err := m.streams.OpenReader(ctx, node, subName, channelID, subSpec)
-	if err != nil {
-		return err
-	}
-	go m.sendIndicationOnStream(streamReader.StreamID(), ch)
-
-	log.Debug("I'm here, I mean in E2 Manager befor creating Monitor")
-	m.monitor = monitoring.NewMonitor(streamReader, e2nodeID, m.ueStore, m.cellStore, m.onosPolicyStore, m.metricStore, m.policies)
-
-	err = m.monitor.Start(ctx)
-	if err != nil {
-		log.Warn(err)
-	}
-
 	return nil
 }
 
-func (m *Manager) getRanFunction(serviceModelsInfo map[string]*topoapi.ServiceModelInfo) (*topoapi.RCRanFunction, error) {
+func (m *Manager) createSubscriptionActions(ctx context.Context, reportStyle *topoapi.KPMReportStyle, cells []*topoapi.E2Cell, granularity int64) ([]e2api.Action, error) {
+	actions := make([]e2api.Action, 0)
+
+	sort.Slice(cells, func(i, j int) bool {
+		return cells[i].CellObjectID < cells[j].CellObjectID
+	})
+
+	for index, cell := range cells {
+		measInfoList := &e2smkpmv2.MeasurementInfoList{
+			Value: make([]*e2smkpmv2.MeasurementInfoItem, 0),
+		}
+
+		for _, measurement := range reportStyle.Measurements {
+			measTypeMeasName, err := pdubuilder.CreateMeasurementTypeMeasName(measurement.GetName())
+			if err != nil {
+				return nil, err
+			}
+
+			meanInfoItem, err := pdubuilder.CreateMeasurementInfoItem(measTypeMeasName)
+			if err != nil {
+				return nil, err
+			}
+			measInfoList.Value = append(measInfoList.Value, meanInfoItem)
+		}
+		subID := int64(index + 1)
+		actionDefinition, err := pdubuilder.CreateActionDefinitionFormat1(cell.GetCellObjectID(), measInfoList, granularity, subID)
+		if err != nil {
+			return nil, err
+		}
+
+		key := actionsstore.NewKey(actionsstore.SubscriptionID{
+			SubID: subID,
+		})
+		// TODO clean up this store if we delete subscriptions
+		_, err = m.actionStore.Put(ctx, key, actionDefinition)
+		if err != nil {
+			log.Warn(err)
+			return nil, err
+		}
+
+		e2smKpmActionDefinition, err := pdubuilder.CreateE2SmKpmActionDefinitionFormat1(reportStyle.Type, actionDefinition)
+		if err != nil {
+			return nil, err
+		}
+
+		e2smKpmActionDefinitionProto, err := proto.Marshal(e2smKpmActionDefinition)
+		if err != nil {
+			return nil, err
+		}
+
+		action := &e2api.Action{
+			ID:   int32(index),
+			Type: e2api.ActionType_ACTION_TYPE_REPORT,
+			SubsequentAction: &e2api.SubsequentAction{
+				Type:       e2api.SubsequentActionType_SUBSEQUENT_ACTION_TYPE_CONTINUE,
+				TimeToWait: e2api.TimeToWait_TIME_TO_WAIT_ZERO,
+			},
+			Payload: e2smKpmActionDefinitionProto,
+		}
+
+		actions = append(actions, *action)
+
+	}
+	return actions, nil
+}
+
+func (m *Manager) getRcRanFunction(serviceModelsInfo map[string]*topoapi.ServiceModelInfo) (*topoapi.RCRanFunction, error) {
 	for _, sm := range serviceModelsInfo {
 		smName := strings.ToLower(sm.Name)
-		if smName == string(m.smModelName) && sm.OID == oid_rc {
+		if smName == string(m.smRcModelName) && sm.OID == oidRc {
 			log.Debug("It works")
 			rcRanFunction := &topoapi.RCRanFunction{}
 			for _, ranFunction := range sm.RanFunctions {
@@ -311,9 +528,28 @@ func (m *Manager) getRanFunction(serviceModelsInfo map[string]*topoapi.ServiceMo
 
 }
 
-func (m *Manager) GetMonitor() *monitoring.Monitor {
-	return m.monitor
+func (m *Manager) getKpmReportStyles(serviceModelsInfo map[string]*topoapi.ServiceModelInfo) ([]*topoapi.KPMReportStyle, error) {
+	for _, sm := range serviceModelsInfo {
+		smName := strings.ToLower(sm.Name)
+		if smName == string(m.smKpmModelName) && sm.OID == oidKpm {
+			kpmRanFunction := &topoapi.KPMRanFunction{}
+			for _, ranFunction := range sm.RanFunctions {
+				if ranFunction.TypeUrl == ranFunction.GetTypeUrl() {
+					err := prototypes.UnmarshalAny(ranFunction, kpmRanFunction)
+					if err != nil {
+						return nil, err
+					}
+					return kpmRanFunction.ReportStyles, nil
+				}
+			}
+		}
+	}
+	return nil, errors.New(errors.NotFound, "cannot retrieve report styles")
 }
+
+// func (m *Manager) GetMonitor() *monitoring.Monitor {
+// 	return m.monitor
+// }
 
 // func (m *Manager) createEventTrigger(triggerType e2sm_mho.MhoTriggerType) ([]byte, error) {
 // 	var reportPeriodMs int32

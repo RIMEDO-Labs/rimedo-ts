@@ -21,13 +21,15 @@ func main() {
 	log.Info("Starting RIMEDO Labs Traffic Steering xAPP")
 
 	sdranConfig := sdran.Config{
-		AppID:       "rimedo-ts",
-		E2tAddress:  "onos-e2t",
-		E2tPort:     5150,
-		TopoAddress: "onos-topo",
-		TopoPort:    5150,
-		SMName:      "oran-e2sm-rc",
-		SMVersion:   "v1",
+		AppID:        "rimedo-ts",
+		E2tAddress:   "onos-e2t",
+		E2tPort:      5150,
+		TopoAddress:  "onos-topo",
+		TopoPort:     5150,
+		SmRcName:     "oran-e2sm-rc",
+		SmRcVersion:  "v1",
+		SmKpmName:    "oran-e2sm-kpm",
+		SmKpmVersion: "v2",
 	}
 
 	a1Config := a1.Config{

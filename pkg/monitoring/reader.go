@@ -3,10 +3,14 @@
 package monitoring
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	topoapi "github.com/onosproject/onos-api/go/onos/topo"
+	e2smkpmv2 "github.com/onosproject/onos-e2-sm/servicemodels/e2sm_kpm_v2_go/v2/e2sm-kpm-v2-go"
 	e2sm_mho "github.com/onosproject/onos-e2-sm/servicemodels/e2sm_mho_go/v2/e2sm-mho-go"
 	e2sm_v2_ies "github.com/onosproject/onos-e2-sm/servicemodels/e2sm_mho_go/v2/e2sm-v2-ies"
 )
@@ -126,4 +130,24 @@ func GetUeID(ueID *e2sm_v2_ies.Ueid) (int64, error) {
 	default:
 		return -1, fmt.Errorf("GetUeID() couldn't extract UeID - obtained unexpected type %v", ue)
 	}
+}
+
+func ToUnixNano(timeStamp int64) int64 {
+	timeStampUnix := time.Unix(timeStamp, 0).UnixNano()
+	return timeStampUnix
+}
+
+func GetMeasurementName(measID string, measurements []*topoapi.KPMMeasurement) string {
+	for _, measurement := range measurements {
+		if measurement.GetID() == measID {
+			return measurement.GetName()
+		}
+	}
+	return ""
+}
+
+func GetTimeStampFromHeader(header *e2smkpmv2.E2SmKpmIndicationHeaderFormat1) uint64 {
+	timeBytes := (*header).GetColletStartTime().Value
+	timeInt32 := binary.BigEndian.Uint32(timeBytes)
+	return uint64(timeInt32)
 }

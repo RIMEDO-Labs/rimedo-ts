@@ -6,10 +6,8 @@ package monitoring
 import (
 	"context"
 
-	policyAPI "github.com/onosproject/onos-a1-dm/go/policy_schemas/traffic_steering_preference/v2"
 	e2api "github.com/onosproject/onos-api/go/onos/e2t/e2/v1beta1"
 	topoapi "github.com/onosproject/onos-api/go/onos/topo"
-	e2sm_v2_ies "github.com/onosproject/onos-e2-sm/servicemodels/e2sm_mho_go/v2/e2sm-v2-ies"
 	e2smrcies "github.com/onosproject/onos-e2-sm/servicemodels/e2sm_rc/v1/e2sm-rc-ies"
 	"github.com/onosproject/onos-lib-go/pkg/errors"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
@@ -21,35 +19,27 @@ import (
 
 var log = logging.GetLogger("monitoring")
 
-func NewMonitor(streamReader broker.StreamReader, nodeID topoapi.ID, ueStore store.Store, cellStore store.Store, onosPolicyStore store.Store, metricStore store.Store, policies map[string]*PolicyData) *Monitor {
-	return &Monitor{
-		streamReader:    streamReader,
-		nodeID:          nodeID,
-		ueStore:         ueStore,
-		cellStore:       cellStore,
-		onosPolicyStore: onosPolicyStore,
-		metricStore:     metricStore,
-		cells:           make(map[string]*CellData),
-		policies:        policies,
+func NewMonitorRC(streamReader broker.StreamReader, nodeID topoapi.ID, metricStore store.Store, nodeManager *NodeManager) *MonitorRC {
+	return &MonitorRC{
+		streamReader: streamReader,
+		nodeID:       nodeID,
+		metricStore:  metricStore,
+		nodeManager:  nodeManager,
 		// indChan:      indChan,
 		// triggerType:  triggerType,
 	}
 }
 
-type Monitor struct {
-	streamReader    broker.StreamReader
-	nodeID          topoapi.ID
-	ueStore         store.Store
-	cellStore       store.Store
-	onosPolicyStore store.Store
-	metricStore     store.Store
-	cells           map[string]*CellData
-	policies        map[string]*PolicyData
+type MonitorRC struct {
+	streamReader broker.StreamReader
+	nodeID       topoapi.ID
+	metricStore  store.Store
+	nodeManager  *NodeManager
 	// indChan      chan *mho.E2NodeIndication
 	// triggerType  e2sm_mho.MhoTriggerType
 }
 
-func (m *Monitor) Start(ctx context.Context) error {
+func (m *MonitorRC) Start(ctx context.Context) error {
 	log.Debugf("I'm starting MONITOR")
 	errCh := make(chan error)
 	go func() {
@@ -75,7 +65,7 @@ func (m *Monitor) Start(ctx context.Context) error {
 	}
 }
 
-func (m *Monitor) processIndication(ctx context.Context, indication e2api.Indication, nodeID topoapi.ID) error {
+func (m *MonitorRC) processIndication(ctx context.Context, indication e2api.Indication, nodeID topoapi.ID) error {
 	log.Debugf("processIndication, nodeID: %v, indication: %v ", nodeID, indication)
 
 	header := e2smrcies.E2SmRcIndicationHeader{}
@@ -171,166 +161,6 @@ func (m *Monitor) processIndication(ctx context.Context, indication e2api.Indica
 		return errors.NewNotSupported("supported type GnbUeid only; received %v", ueID)
 	}
 	return nil
-}
-
-func (c *Monitor) CreateUe(ctx context.Context, ueID string) *UeData {
-	if len(ueID) == 0 {
-		panic("bad data")
-	}
-	ueData := &UeData{
-		UeID:          ueID,
-		CGIString:     "",
-		RrcState:      e2smrcies.RrcState_name[int32(e2smrcies.RrcState_RRC_STATE_RRC_CONNECTED)],
-		RsrpNeighbors: make(map[string]int32),
-	}
-	_, err := c.ueStore.Put(ctx, ueID, *ueData, store.Done)
-	if err != nil {
-		log.Warn(err)
-	}
-
-	return ueData
-}
-
-func (c *Monitor) GetUe(ctx context.Context, ueID string) *UeData {
-	var ueData *UeData
-	u, err := c.ueStore.Get(ctx, ueID)
-	if err != nil || u == nil {
-		return nil
-	}
-	t := u.Value.(UeData)
-	ueData = &t
-	if ueData.UeID != ueID {
-		panic("bad data")
-	}
-
-	return ueData
-}
-
-func (c *Monitor) SetUe(ctx context.Context, ueData *UeData) {
-	_, err := c.ueStore.Put(ctx, ueData.UeID, *ueData, store.Done)
-	if err != nil {
-		panic("bad data")
-	}
-}
-
-func (c *Monitor) AttachUe(ctx context.Context, ueData *UeData, cgi string, cgiObject *e2sm_v2_ies.Cgi) {
-
-	c.DetachUe(ctx, ueData)
-
-	ueData.CGIString = cgi
-	c.SetUe(ctx, ueData)
-	cell := c.GetCell(ctx, cgi)
-	if cell == nil {
-		cell = c.CreateCell(ctx, cgi, cgiObject)
-	}
-	cell.Ues[ueData.UeID] = ueData
-	c.SetCell(ctx, cell)
-}
-
-func (c *Monitor) DetachUe(ctx context.Context, ueData *UeData) {
-	for _, cell := range c.cells {
-		delete(cell.Ues, ueData.UeID)
-	}
-}
-
-func (c *Monitor) CreateCell(ctx context.Context, cgi string, cgiObject *e2sm_v2_ies.Cgi) *CellData {
-	if len(cgi) == 0 {
-		panic("bad data")
-	}
-	cellData := &CellData{
-		CGI:       cgiObject,
-		CGIString: cgi,
-		Ues:       make(map[string]*UeData),
-	}
-	_, err := c.cellStore.Put(ctx, cgi, *cellData, store.Done)
-	if err != nil {
-		panic("bad data")
-	}
-	c.cells[cellData.CGIString] = cellData
-	return cellData
-}
-
-func (c *Monitor) GetCell(ctx context.Context, cgi string) *CellData {
-	var cellData *CellData
-	cell, err := c.cellStore.Get(ctx, cgi)
-	if err != nil || cell == nil {
-		return nil
-	}
-	t := cell.Value.(CellData)
-	if t.CGIString != cgi {
-		panic("bad data")
-	}
-	cellData = &t
-	return cellData
-}
-
-func (c *Monitor) SetCell(ctx context.Context, cellData *CellData) {
-	if len(cellData.CGIString) == 0 {
-		panic("bad data")
-	}
-	_, err := c.cellStore.Put(ctx, cellData.CGIString, *cellData, store.Done)
-	if err != nil {
-		panic("bad data")
-	}
-}
-
-func (c *Monitor) CreatePolicy(ctx context.Context, key string, policy *policyAPI.API) *PolicyData {
-	if len(key) == 0 {
-		panic("bad data")
-	}
-	policyData := &PolicyData{
-		Key:        key,
-		API:        policy,
-		IsEnforced: true,
-	}
-
-	log.Debugf("Key: ", key)
-	log.Debugf("PolicyData: ", policyData)
-
-	_, err := c.onosPolicyStore.Put(ctx, key, *policyData, store.Done)
-	if err != nil {
-		log.Panic("bad data")
-	}
-	c.policies[policyData.Key] = policyData
-	return policyData
-}
-
-func (c *Monitor) GetPolicy(ctx context.Context, key string) *PolicyData {
-	var policy *PolicyData
-	p, err := c.onosPolicyStore.Get(ctx, key)
-	if err != nil || p == nil {
-		return nil
-	}
-	t := p.Value.(PolicyData)
-	if t.Key != key {
-		panic("bad data")
-	}
-	policy = &t
-
-	return policy
-}
-
-func (c *Monitor) SetPolicy(ctx context.Context, key string, policy *PolicyData) {
-	_, err := c.onosPolicyStore.Put(ctx, key, *policy, store.Done)
-	if err != nil {
-		panic("bad data")
-	}
-}
-
-func (c *Monitor) DeletePolicy(ctx context.Context, key string) {
-	if err := c.onosPolicyStore.Delete(ctx, key); err != nil {
-		panic("bad data")
-	} else {
-		delete(c.policies, key)
-	}
-}
-
-func (c *Monitor) GetPolicyStore() *store.Store {
-	return &c.onosPolicyStore
-}
-
-func ConvertCgiToTheRightForm(cgi string) string {
-	return cgi[0:8] + cgi[13:14] + cgi[10:12] + cgi[8:10] + cgi[14:15] + cgi[12:13]
 }
 
 // m.indChan <- &mho.E2NodeIndication{
