@@ -24,8 +24,7 @@ import (
 var log = logging.GetLogger("rimedo-ts", "e2", "manager")
 
 const (
-	oid_rc  = "1.3.6.1.4.1.53148.1.1.2.3"
-	oid_kpm = "1.3.6.1.4.1.53148.1.2.2.2"
+	oid = "1.3.6.1.4.1.53148.1.1.2.3"
 )
 
 type Options struct {
@@ -116,7 +115,7 @@ func (m *Manager) watchE2Connections(ctx context.Context) error {
 			relation := topoEvent.Object.Obj.(*topoapi.Object_Relation)
 			e2NodeID := relation.Relation.TgtEntityID
 
-			if !m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid_rc) && !m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid_kpm) {
+			if !m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid) {
 				log.Debugf("Received topo event does not have RC or KPM RAN function for RIMEDO TS xApp - %v", topoEvent)
 				continue
 			}
@@ -148,32 +147,17 @@ func (m *Manager) watchE2Connections(ctx context.Context) error {
 			// TODO - Handle E2 node disconnect
 			relation := topoEvent.Object.Obj.(*topoapi.Object_Relation)
 			e2NodeID := relation.Relation.TgtEntityID
+			if !m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid) {
+				log.Debugf("Received topo event does not have RC RAN function for MHO - %v", topoEvent)
+				continue
+			}
 			cellIDs, err := m.rnibClient.GetCells(ctx, e2NodeID)
 			if err != nil {
 				return err
 			}
-			if m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid_rc) {
-				for _, cellID := range cellIDs {
-					log.Debugf("cell removed, e2NodeID:%v, cellID:%v", e2NodeID, cellID.CellGlobalID.GetValue())
-				}
-			} else if m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid_kpm) {
-				for _, coi := range cellIDs {
-					key := measurements.Key{
-						NodeID: string(e2NodeID),
-						CellIdentity: measurements.CellIdentity{
-							CellID: coi.CellObjectID,
-						},
-					}
-					err = m.measurementStore.Delete(ctx, key)
-					if err != nil {
-						log.Warn(err)
-					}
-				}
-			} else {
-				log.Debugf("Received topo event does not have RC RAN function for MHO - %v", topoEvent)
-				continue
+			for _, cellID := range cellIDs {
+				log.Debugf("cell removed, e2NodeID:%v, cellID:%v", e2NodeID, cellID.CellGlobalID.GetValue())
 			}
-
 		}
 	}
 
@@ -293,7 +277,7 @@ func (m *Manager) createSubscription(ctx context.Context, e2nodeID topoapi.ID) e
 func (m *Manager) getRanFunction(serviceModelsInfo map[string]*topoapi.ServiceModelInfo) (*topoapi.RCRanFunction, error) {
 	for _, sm := range serviceModelsInfo {
 		smName := strings.ToLower(sm.Name)
-		if smName == string(m.smModelName) && sm.OID == oid_rc {
+		if smName == string(m.smModelName) && sm.OID == oid {
 			log.Debug("It works")
 			rcRanFunction := &topoapi.RCRanFunction{}
 			for _, ranFunction := range sm.RanFunctions {
