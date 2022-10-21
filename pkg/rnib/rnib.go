@@ -46,7 +46,7 @@ type Client struct {
 	client toposdk.Client
 }
 
-func (c *Client) HasRcRANFunction(ctx context.Context, nodeID topoapi.ID, oid string) bool {
+func (c *Client) HasRANFunction(ctx context.Context, nodeID topoapi.ID, oid string) bool {
 	e2Node, err := c.GetE2NodeAspects(ctx, nodeID)
 	if err != nil {
 		return false

@@ -23,13 +23,15 @@ import (
 var log = logging.GetLogger("rimedo-ts", "sdran", "manager")
 
 type Config struct {
-	AppID       string
-	E2tAddress  string
-	E2tPort     int
-	TopoAddress string
-	TopoPort    int
-	SMName      string
-	SMVersion   string
+	AppID        string
+	E2tAddress   string
+	E2tPort      int
+	TopoAddress  string
+	TopoPort     int
+	SmRcName     string
+	SmRcVersion  string
+	SmMhoName    string
+	SmMhoVersion string
 }
 
 func NewManager(config Config) *Manager {
@@ -41,21 +43,26 @@ func NewManager(config Config) *Manager {
 
 	policyMap := make(map[string]*monitoring.PolicyData)
 
-	// indCh := make(chan *mho.E2NodeIndication)
+	infoChan := make(chan *monitoring.E2NodeIndication)
+
+	nodeManager := monitoring.NewNodeManager(infoChan, ueStore, cellStore, onosPolicyStore, policyMap)
+
 	// ctrlReqChs := make(map[string]chan *e2api.ControlMessage)
 
 	options := e2.Options{
-		AppID:       config.AppID,
-		E2tAddress:  config.E2tAddress,
-		E2tPort:     config.E2tPort,
-		TopoAddress: config.TopoAddress,
-		TopoPort:    config.TopoPort,
-		SMName:      config.SMName,
-		SMVersion:   config.SMVersion,
+		AppID:        config.AppID,
+		E2tAddress:   config.E2tAddress,
+		E2tPort:      config.E2tPort,
+		TopoAddress:  config.TopoAddress,
+		TopoPort:     config.TopoPort,
+		SmRcName:     config.SmRcName,
+		SmRcVersion:  config.SmRcVersion,
+		SmMhoName:    config.SmMhoName,
+		SmMhoVersion: config.SmMhoVersion,
 	}
 
 	// e2Manager, err := e2.NewManager(options, indCh, ctrlReqChs)
-	e2Manager, err := e2.NewManager(options, ueStore, cellStore, onosPolicyStore, metricStore, policyMap)
+	e2Manager, err := e2.NewManager(options, metricStore, nodeManager)
 	if err != nil {
 		log.Warn(err)
 	}
@@ -65,6 +72,7 @@ func NewManager(config Config) *Manager {
 		monitor:       nil,
 		mhoCtrl:       controller.NewMHOController(metricStore),
 		policyManager: policy.NewPolicyManager(&policyMap),
+		nodeManager:   nodeManager,
 		ueStore:       ueStore,
 		cellStore:     cellStore,
 		metricStore:   metricStore,
@@ -83,6 +91,7 @@ type Manager struct {
 	monitor       *monitoring.Monitor
 	mhoCtrl       *controller.MHOController
 	policyManager *policy.PolicyManager
+	nodeManager   *monitoring.NodeManager
 	ueStore       store.Store
 	cellStore     store.Store
 	metricStore   store.Store
@@ -101,13 +110,15 @@ func (m *Manager) Run() {
 }
 
 func (m *Manager) start() error {
+	ctx := context.Background()
 	m.startNorthboundServer()
 	err := m.e2Manager.Start()
 	if err != nil {
 		log.Warn(err)
 		return err
 	}
-	go m.mhoCtrl.Run(context.Background())
+	go m.mhoCtrl.Run(ctx)
+	go m.nodeManager.Start(ctx)
 
 	return nil
 }
@@ -146,48 +157,15 @@ func (m *Manager) AddService(service service.Service) {
 }
 
 func (m *Manager) GetUEs(ctx context.Context) map[string]monitoring.UeData {
-	output := make(map[string]monitoring.UeData)
-	chEntries := make(chan *store.Entry, 1024)
-	err := m.ueStore.Entries(ctx, chEntries)
-	if err != nil {
-		log.Warn(err)
-		return output
-	}
-	for entry := range chEntries {
-		ueData := entry.Value.(monitoring.UeData)
-		output[ueData.UeID] = ueData
-	}
-	return output
+	return m.nodeManager.GetUEs(ctx)
 }
 
 func (m *Manager) GetCells(ctx context.Context) map[string]monitoring.CellData {
-	output := make(map[string]monitoring.CellData)
-	chEntries := make(chan *store.Entry, 1024)
-	err := m.cellStore.Entries(ctx, chEntries)
-	if err != nil {
-		log.Warn(err)
-		return output
-	}
-	for entry := range chEntries {
-		cellData := entry.Value.(monitoring.CellData)
-		output[cellData.CGIString] = cellData
-	}
-	return output
+	return m.nodeManager.GetCells(ctx)
 }
 
 func (m *Manager) GetPolicies(ctx context.Context) map[string]monitoring.PolicyData {
-	output := make(map[string]monitoring.PolicyData)
-	chEntries := make(chan *store.Entry, 1024)
-	err := m.onosPolicyStore.Entries(ctx, chEntries)
-	if err != nil {
-		log.Warn(err)
-		return output
-	}
-	for entry := range chEntries {
-		policyData := entry.Value.(monitoring.PolicyData)
-		output[policyData.Key] = policyData
-	}
-	return output
+	return m.nodeManager.GetPolicies(ctx)
 }
 
 func (m *Manager) GetCellTypes(ctx context.Context) map[string]rnib.Cell {
@@ -200,65 +178,65 @@ func (m *Manager) SetCellType(ctx context.Context, cellID string, cellType strin
 
 func (m *Manager) GetCell(ctx context.Context, CGI string) *monitoring.CellData {
 
-	return m.e2Manager.GetMonitor().GetCell(ctx, CGI)
+	return m.nodeManager.GetCell(ctx, CGI)
 
 }
 
 func (m *Manager) SetCell(ctx context.Context, cell *monitoring.CellData) {
 
-	m.e2Manager.GetMonitor().SetCell(ctx, cell)
+	m.nodeManager.SetCell(ctx, cell)
 
 }
 
 func (m *Manager) AttachUe(ctx context.Context, ue *monitoring.UeData, CGI string, cgiObject *e2sm_v2_ies.Cgi) {
 
-	m.e2Manager.GetMonitor().AttachUe(ctx, ue, CGI, cgiObject)
+	m.nodeManager.AttachUe(ctx, ue, CGI, cgiObject)
 
 }
 
 func (m *Manager) GetUe(ctx context.Context, ueID string) *monitoring.UeData {
 
-	return m.e2Manager.GetMonitor().GetUe(ctx, ueID)
+	return m.nodeManager.GetUe(ctx, ueID)
 
 }
 
 func (m *Manager) SetUe(ctx context.Context, ueData *monitoring.UeData) {
 
-	m.e2Manager.GetMonitor().SetUe(ctx, ueData)
+	m.nodeManager.SetUe(ctx, ueData)
 
 }
 
 func (m *Manager) CreatePolicy(ctx context.Context, key string, policy *policyAPI.API) *monitoring.PolicyData {
 
-	if m.e2Manager.GetMonitor() == nil {
+	if m.nodeManager == nil {
 		log.Debug("Monitor is NIL")
 	} else {
 		log.Debug("IS NOT")
 	}
-	return m.e2Manager.GetMonitor().CreatePolicy(ctx, key, policy)
+	return m.nodeManager.CreatePolicy(ctx, key, policy)
 
 }
 
 func (m *Manager) GetPolicy(ctx context.Context, key string) *monitoring.PolicyData {
 
-	return m.e2Manager.GetMonitor().GetPolicy(ctx, key)
+	return m.nodeManager.GetPolicy(ctx, key)
 
 }
 
 func (m *Manager) SetPolicy(ctx context.Context, key string, policy *monitoring.PolicyData) {
 
-	m.e2Manager.GetMonitor().SetPolicy(ctx, key, policy)
+	m.nodeManager.SetPolicy(ctx, key, policy)
 
 }
 
 func (m *Manager) DeletePolicy(ctx context.Context, key string) {
 
-	m.e2Manager.GetMonitor().DeletePolicy(ctx, key)
+	m.nodeManager.DeletePolicy(ctx, key)
 
 }
 
 func (m *Manager) GetPolicyStore() *store.Store {
-	return m.e2Manager.GetMonitor().GetPolicyStore()
+	return m.nodeManager.GetPolicyStore()
 }
 
 // func (m *Manager) GetControlChannelsMap(ctx context.Context) map[string]chan *e2api.ControlMessage {
