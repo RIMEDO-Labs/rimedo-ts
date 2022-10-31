@@ -4,35 +4,42 @@ package sdran
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/controller"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/monitoring"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/policy"
+	ransimapi "github.com/RIMEDO-Labs/rimedo-ts/pkg/ransim-api"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/rnib"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/southbound/e2"
 	policyAPI "github.com/onosproject/onos-a1-dm/go/policy_schemas/traffic_steering_preference/v2"
-	e2sm_v2_ies "github.com/onosproject/onos-e2-sm/servicemodels/e2sm_mho_go/v2/e2sm-v2-ies"
+	topoapi "github.com/onosproject/onos-api/go/onos/topo"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/logging/service"
 	"github.com/onosproject/onos-lib-go/pkg/northbound"
 	nbi "github.com/onosproject/onos-mho/pkg/northbound"
 	"github.com/onosproject/onos-mho/pkg/store"
+	idutil "github.com/onosproject/onos-mho/pkg/utils/id"
 )
 
 var log = logging.GetLogger("rimedo-ts", "sdran", "manager")
 
 type Config struct {
-	AppID       string
-	E2tAddress  string
-	E2tPort     int
-	TopoAddress string
-	TopoPort    int
-	SMName      string
-	SMVersion   string
+	AppID         string
+	E2tAddress    string
+	E2tPort       int
+	TopoAddress   string
+	TopoPort      int
+	SMName        string
+	SMVersion     string
+	RansimAddress string
+	RansimPort    int
 }
 
-func NewManager(config Config) *Manager {
+func NewManager(config Config, flag bool) *Manager {
 
 	ueStore := store.NewStore()
 	cellStore := store.NewStore()
@@ -41,8 +48,9 @@ func NewManager(config Config) *Manager {
 
 	policyMap := make(map[string]*monitoring.PolicyData)
 
-	// indCh := make(chan *mho.E2NodeIndication)
-	// ctrlReqChs := make(map[string]chan *e2api.ControlMessage)
+	nodeManager := monitoring.NewNodeManager(ueStore, cellStore, onosPolicyStore, policyMap)
+
+	ransimApiHandler, _ := ransimapi.NewHandler(config.RansimAddress+":"+strconv.Itoa(config.RansimPort), nodeManager)
 
 	options := e2.Options{
 		AppID:       config.AppID,
@@ -54,60 +62,68 @@ func NewManager(config Config) *Manager {
 		SMVersion:   config.SMVersion,
 	}
 
-	// e2Manager, err := e2.NewManager(options, indCh, ctrlReqChs)
-	e2Manager, err := e2.NewManager(options, ueStore, cellStore, onosPolicyStore, metricStore, policyMap)
+	e2Manager, err := e2.NewManager(options, metricStore, nodeManager, flag)
 	if err != nil {
 		log.Warn(err)
 	}
 
 	manager := &Manager{
-		e2Manager:     e2Manager,
-		monitor:       nil,
-		mhoCtrl:       controller.NewMHOController(metricStore),
-		policyManager: policy.NewPolicyManager(&policyMap),
-		ueStore:       ueStore,
-		cellStore:     cellStore,
-		metricStore:   metricStore,
-		// ueStore:         ueStore,
-		// cellStore:       cellStore,
-		onosPolicyStore: onosPolicyStore,
-		// ctrlReqChs:      ctrlReqChs,
-		services: []service.Service{},
-		mutex:    sync.RWMutex{},
+		e2Manager:        e2Manager,
+		monitor:          nil,
+		mhoCtrl:          controller.NewMHOController(metricStore),
+		policyManager:    policy.NewPolicyManager(&policyMap),
+		nodeManager:      nodeManager,
+		metricStore:      metricStore,
+		services:         []service.Service{},
+		mutex:            sync.RWMutex{},
+		topoIDsEnabled:   flag,
+		ransimApiHandler: ransimApiHandler,
 	}
 	return manager
 }
 
 type Manager struct {
-	e2Manager     e2.Manager
-	monitor       *monitoring.Monitor
-	mhoCtrl       *controller.MHOController
-	policyManager *policy.PolicyManager
-	ueStore       store.Store
-	cellStore     store.Store
-	metricStore   store.Store
-	// ueStore         store.Store
-	// cellStore       store.Store
-	onosPolicyStore store.Store
-	// ctrlReqChs      map[string]chan *e2api.ControlMessage
-	services []service.Service
-	mutex    sync.RWMutex
+	e2Manager        e2.Manager
+	monitor          *monitoring.Monitor
+	mhoCtrl          *controller.MHOController
+	policyManager    *policy.PolicyManager
+	nodeManager      *monitoring.NodeManager
+	metricStore      store.Store
+	services         []service.Service
+	mutex            sync.RWMutex
+	topoIDsEnabled   bool
+	ransimApiHandler ransimapi.Handler
 }
 
-func (m *Manager) Run() {
-	if err := m.start(); err != nil {
+func (m *Manager) Run(ctx context.Context) {
+	if err := m.start(ctx); err != nil {
 		log.Fatal("Unable to run Manager", err)
 	}
 }
 
-func (m *Manager) start() error {
+func (m *Manager) start(ctx context.Context) error {
+	// ctx := context.Background()
 	m.startNorthboundServer()
 	err := m.e2Manager.Start()
 	if err != nil {
 		log.Warn(err)
 		return err
 	}
-	go m.mhoCtrl.Run(context.Background())
+	go m.mhoCtrl.Run(ctx)
+
+	time.Sleep(30 * time.Second)
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			// log.Debug()
+			// log.Debug()
+			// log.Debug("CELL STORE: ", m.GetCells(ctx))
+			// log.Debug()
+			// log.Debug()
+			_ = m.ransimApiHandler.GetUesParameters(ctx)
+			// log.Warnf("Warning: " + fmt.Sprint(err))
+		}
+	}()
 
 	return nil
 }
@@ -146,48 +162,15 @@ func (m *Manager) AddService(service service.Service) {
 }
 
 func (m *Manager) GetUEs(ctx context.Context) map[string]monitoring.UeData {
-	output := make(map[string]monitoring.UeData)
-	chEntries := make(chan *store.Entry, 1024)
-	err := m.ueStore.Entries(ctx, chEntries)
-	if err != nil {
-		log.Warn(err)
-		return output
-	}
-	for entry := range chEntries {
-		ueData := entry.Value.(monitoring.UeData)
-		output[ueData.UeID] = ueData
-	}
-	return output
+	return m.nodeManager.GetUEs(ctx)
 }
 
 func (m *Manager) GetCells(ctx context.Context) map[string]monitoring.CellData {
-	output := make(map[string]monitoring.CellData)
-	chEntries := make(chan *store.Entry, 1024)
-	err := m.cellStore.Entries(ctx, chEntries)
-	if err != nil {
-		log.Warn(err)
-		return output
-	}
-	for entry := range chEntries {
-		cellData := entry.Value.(monitoring.CellData)
-		output[cellData.CGIString] = cellData
-	}
-	return output
+	return m.nodeManager.GetCells(ctx)
 }
 
 func (m *Manager) GetPolicies(ctx context.Context) map[string]monitoring.PolicyData {
-	output := make(map[string]monitoring.PolicyData)
-	chEntries := make(chan *store.Entry, 1024)
-	err := m.onosPolicyStore.Entries(ctx, chEntries)
-	if err != nil {
-		log.Warn(err)
-		return output
-	}
-	for entry := range chEntries {
-		policyData := entry.Value.(monitoring.PolicyData)
-		output[policyData.Key] = policyData
-	}
-	return output
+	return m.nodeManager.GetPolicies(ctx)
 }
 
 func (m *Manager) GetCellTypes(ctx context.Context) map[string]rnib.Cell {
@@ -200,65 +183,60 @@ func (m *Manager) SetCellType(ctx context.Context, cellID string, cellType strin
 
 func (m *Manager) GetCell(ctx context.Context, CGI string) *monitoring.CellData {
 
-	return m.e2Manager.GetMonitor().GetCell(ctx, CGI)
+	return m.nodeManager.GetCell(ctx, CGI)
 
 }
 
 func (m *Manager) SetCell(ctx context.Context, cell *monitoring.CellData) {
 
-	m.e2Manager.GetMonitor().SetCell(ctx, cell)
+	m.nodeManager.SetCell(ctx, cell)
 
 }
 
-func (m *Manager) AttachUe(ctx context.Context, ue *monitoring.UeData, CGI string, cgiObject *e2sm_v2_ies.Cgi) {
+func (m *Manager) AttachUe(ctx context.Context, ue *monitoring.UeData, CGI string, e2NodeID topoapi.ID) {
 
-	m.e2Manager.GetMonitor().AttachUe(ctx, ue, CGI, cgiObject)
+	m.nodeManager.AttachUe(ctx, ue, CGI, e2NodeID)
 
 }
 
 func (m *Manager) GetUe(ctx context.Context, ueID string) *monitoring.UeData {
 
-	return m.e2Manager.GetMonitor().GetUe(ctx, ueID)
+	return m.nodeManager.GetUe(ctx, ueID)
 
 }
 
 func (m *Manager) SetUe(ctx context.Context, ueData *monitoring.UeData) {
 
-	m.e2Manager.GetMonitor().SetUe(ctx, ueData)
+	m.nodeManager.SetUe(ctx, ueData)
 
 }
 
 func (m *Manager) CreatePolicy(ctx context.Context, key string, policy *policyAPI.API) *monitoring.PolicyData {
 
-	if m.e2Manager.GetMonitor() == nil {
-		log.Debug("Monitor is NIL")
-	} else {
-		log.Debug("IS NOT")
-	}
-	return m.e2Manager.GetMonitor().CreatePolicy(ctx, key, policy)
+	return m.nodeManager.CreatePolicy(ctx, key, policy)
 
 }
 
 func (m *Manager) GetPolicy(ctx context.Context, key string) *monitoring.PolicyData {
 
-	return m.e2Manager.GetMonitor().GetPolicy(ctx, key)
+	return m.nodeManager.GetPolicy(ctx, key)
 
 }
 
 func (m *Manager) SetPolicy(ctx context.Context, key string, policy *monitoring.PolicyData) {
 
-	m.e2Manager.GetMonitor().SetPolicy(ctx, key, policy)
+	m.nodeManager.SetPolicy(ctx, key, policy)
 
 }
 
 func (m *Manager) DeletePolicy(ctx context.Context, key string) {
 
-	m.e2Manager.GetMonitor().DeletePolicy(ctx, key)
+	m.nodeManager.DeletePolicy(ctx, key)
 
 }
 
 func (m *Manager) GetPolicyStore() *store.Store {
-	return m.e2Manager.GetMonitor().GetPolicyStore()
+	return m.nodeManager.GetPolicyStore()
 }
 
 // func (m *Manager) GetControlChannelsMap(ctx context.Context) map[string]chan *e2api.ControlMessage {
@@ -269,27 +247,69 @@ func (m *Manager) GetPolicyManager() *policy.PolicyManager {
 	return m.policyManager
 }
 
-func (m *Manager) SwitchUeBetweenCells(ctx context.Context, ueID string, targetCellCGI string) {
+func (m *Manager) SwitchUeBetweenCells(ctx context.Context, ueID string, targetCellCGI string) error {
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	availableUes := m.GetUEs(ctx)
-	chosenUe := availableUes[ueID]
+	chosenUe := m.GetUe(ctx, ueID)
+	// chosenUe := availableUes[ueID]
 
 	if shouldBeSwitched(chosenUe, targetCellCGI) {
 
-		targetCell := m.GetCell(ctx, targetCellCGI)
-		servingCell := m.GetCell(ctx, chosenUe.CGIString)
+		key := idutil.GenerateGnbUeIDString(chosenUe.UeID.GetGNbUeid())
 
-		targetCell.CumulativeHandoversOut++
-		servingCell.CumulativeHandoversIn++
+		if m.metricStore.HasEntry(ctx, key) {
 
-		m.AttachUe(ctx, &chosenUe, targetCellCGI, targetCell.CGI)
+			// log.Debug()
+			// log.Debug()
+			// log.Debug("TARGET: ", targetCellCGI)
+			// log.Debug("CURRENT: ", chosenUe.CGI)
+			// log.Debug()
+			// log.Debug()
 
-		m.SetCell(ctx, targetCell)
-		m.SetCell(ctx, servingCell)
+			// cells := m.GetCells(ctx)
 
+			// log.Debug("CELL STORE: ", cells)
+
+			targetCell := m.GetCell(ctx, targetCellCGI)
+			servingCell := m.GetCell(ctx, chosenUe.CGI)
+
+			if targetCell == nil || servingCell == nil {
+				return fmt.Errorf("Target or Serving Cell is not registered in the store yet!")
+			}
+
+			targetCell.CumulativeHandoversOut++
+			servingCell.CumulativeHandoversIn++
+
+			// m.AttachUe(ctx, chosenUe, targetCellCGI, targetCell.E2NodeID)
+
+			m.SetCell(ctx, targetCell)
+			m.SetCell(ctx, servingCell)
+
+			v, err := m.metricStore.Get(ctx, key)
+			if err != nil {
+				return err
+			}
+			nv := v.Value.(*store.MetricValue)
+
+			log.Debugf("State changed for %v from %v to %v", key, nv.State.String(), store.StateCreated)
+			metricValue := &store.MetricValue{
+				RawUEID:       chosenUe.UeID,
+				TgtCellID:     targetCell.CGI,
+				State:         store.StateCreated,
+				CallProcessID: nv.CallProcessID,
+				E2NodeID:      targetCell.E2NodeID,
+			}
+			_, err = m.metricStore.Put(ctx, key, metricValue, store.StateCreated)
+			if err != nil {
+				return err
+			}
+			// ueData := m.nodeManager.GetUe(ctx, chosenUe.UeID.GetGNbUeid().AmfUeNgapId.String())
+			tgtCellID := m.ConvertCgiToTheRightForm(targetCell.CGI)
+			m.nodeManager.AttachUe(ctx, chosenUe, tgtCellID, targetCell.E2NodeID)
+
+		}
 		// controlChannel := m.ctrlReqChs[chosenUe.E2NodeID]
 
 		// controlHandler := &control.E2SmMhoControlHandler{
@@ -333,15 +353,22 @@ func (m *Manager) SwitchUeBetweenCells(ctx context.Context, ueID string, targetC
 		// }()
 
 	}
-
+	return nil
 }
 
-func shouldBeSwitched(ue monitoring.UeData, cgi string) bool {
+func shouldBeSwitched(ue *monitoring.UeData, cgi string) bool {
 
-	servingCgi := ue.CGIString
+	servingCgi := ue.CGI
 	if servingCgi == cgi {
 		return false
 	}
 	return true
 
+}
+
+func (m *Manager) ConvertCgiToTheRightForm(cgi string) string {
+	if m.topoIDsEnabled {
+		return cgi[0:6] + cgi[14:15] + cgi[12:14] + cgi[10:12] + cgi[8:10] + cgi[6:8]
+	}
+	return cgi
 }

@@ -6,6 +6,7 @@ package controller
 
 import (
 	"context"
+
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-mho/pkg/store"
 )
@@ -42,9 +43,9 @@ func (m *MHOController) controlHandover(ctx context.Context) {
 				log.Error(err)
 			}
 			nv := v.Value.(*store.MetricValue)
-			log.Debugf("new event indication message - key: %v, value: %v, event type: %v", e.Key, nv, e.Type)
+			// log.Debugf("new event indication message - key: %v, value: %v, event type: %v", e.Key, nv, e.Type)
 			if e.EventMHOState.(store.MHOState) == store.StateCreated || e.EventMHOState.(store.MHOState) == store.Denied {
-				log.Debugf("State changed for %v from %v to %v", key, nv.State.String(), store.Approved)
+				// log.Debugf("State changed for %v from %v to %v", key, nv.State.String(), store.Approved)
 				nv.State = store.Approved
 				_, err = m.metricStore.Put(ctx, key, nv, store.Approved)
 				if err != nil {

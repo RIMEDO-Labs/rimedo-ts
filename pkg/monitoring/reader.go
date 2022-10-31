@@ -20,6 +20,16 @@ func PlmnIDNciToCGI(plmnID uint64, nci uint64) string {
 	return cgi
 }
 
+func PlmnIDNciFromCGI(cgi string) (uint64, uint64) {
+	cgiString, err := strconv.ParseUint(cgi, 16, 64)
+	if err != nil {
+		log.Error(err)
+	}
+	nci := cgiString & 0xfffffffff
+	plmnId := (cgiString & 0xfffffff000000000) >> 36
+	return nci, plmnId
+}
+
 func GetNciFromCellGlobalID(cellGlobalID *e2sm_v2_ies.Cgi) uint64 {
 	return BitStringToUint64(cellGlobalID.GetNRCgi().GetNRcellIdentity().GetValue().GetValue(), int(cellGlobalID.GetNRCgi().GetNRcellIdentity().GetValue().GetLen()))
 }
@@ -28,37 +38,55 @@ func GetPlmnIDBytesFromCellGlobalID(cellGlobalID *e2sm_v2_ies.Cgi) []byte {
 	return cellGlobalID.GetNRCgi().GetPLmnidentity().GetValue()
 }
 
-func GetMccMncFromPlmnID(plmnId uint64) (string, string) {
+func GetMccMncFromPlmnID(plmnId uint64, flag bool) (string, string) {
 	plmnIdString := strconv.FormatUint(plmnId, 16)
+	// log.Debug()
+	// log.Debug()
+	// log.Debug("PLMN ID: ", plmnId)
+	// log.Debug("PLMN String: ", plmnIdString)
+	// log.Debug()
+	// log.Debug()
+	var mcc string
+	var mnc string
 
-	middle := ReverseString(plmnIdString[2:4])
-	mcc := ReverseString(plmnIdString[0:2]) + middle[0:1]
-	mcn := ReverseString(plmnIdString[4:6]) + middle[1:2]
-	mcc = strings.ReplaceAll(mcc, "f", "")
-	mcc = strings.ReplaceAll(mcc, "F", "")
-	mcn = strings.ReplaceAll(mcn, "f", "")
-	mcn = strings.ReplaceAll(mcn, "F", "")
+	if flag {
+		middle := ReverseString(plmnIdString[2:4])
+		mcc = ReverseString(plmnIdString[0:2]) + middle[0:1]
+		mnc = ReverseString(plmnIdString[4:6]) + middle[1:2]
+		mcc = strings.ReplaceAll(mcc, "f", "")
+		mcc = strings.ReplaceAll(mcc, "F", "")
+		mnc = strings.ReplaceAll(mnc, "f", "")
+		mnc = strings.ReplaceAll(mnc, "F", "")
+	} else {
+		mcc = plmnIdString[0:3]
+		mnc = plmnIdString[3:6]
+	}
 
-	return mcc, mcn
+	return mcc, mnc
 }
 
-func GetPlmnIdFromMccMnc(mcc string, mnc string) (uint64, error) {
+func GetPlmnIdFromMccMnc(mcc string, mnc string, flag bool) (uint64, error) {
+	var plmnIdString string
 	combined := mcc + mnc
-	first := ReverseString(combined[0:2])
-	var middle string
-	var last string
-	if len(combined) > 5 {
+	if flag {
+		first := ReverseString(combined[0:2])
+		var middle string
+		var last string
+		if len(combined) > 5 {
 
-		middle = ReverseString(combined[2:4])
-		last = ReverseString(combined[4:6])
+			middle = ReverseString(combined[2:4])
+			last = ReverseString(combined[4:6])
 
+		} else {
+
+			middle = "f" + combined[2:3]
+			last = ReverseString(combined[3:5])
+
+		}
+		plmnIdString = first + middle + last
 	} else {
-
-		middle = "f" + combined[2:3]
-		last = ReverseString(combined[3:5])
-
+		plmnIdString = combined
 	}
-	plmnIdString := first + middle + last
 	plmnId, err := strconv.ParseUint(plmnIdString, 16, 64)
 	if err != nil {
 		log.Warn("Cannot convert PLMN ID string into uint64 type!")

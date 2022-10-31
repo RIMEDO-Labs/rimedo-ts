@@ -37,7 +37,7 @@ type Options struct {
 	SMVersion   string
 }
 
-func NewManager(options Options, ueStore store.Store, cellStore store.Store, onosPolicyStore store.Store, metricStore store.Store, policies map[string]*monitoring.PolicyData) (Manager, error) {
+func NewManager(options Options, metricStore store.Store, nodeManager *monitoring.NodeManager, flag bool) (Manager, error) {
 
 	smName := e2client.ServiceModelName(options.SMName)
 	smVer := e2client.ServiceModelVersion(options.SMVersion)
@@ -59,34 +59,24 @@ func NewManager(options Options, ueStore store.Store, cellStore store.Store, ono
 	}
 
 	return Manager{
-		e2client:   e2Client,
-		rnibClient: rnibClient,
-		streams:    broker.NewBroker(),
-		monitor:    nil,
-		// indCh:       indCh,
-		// ctrlReqChs:  ctrlReqChs,
-		smModelName:     smName,
-		ueStore:         ueStore,
-		cellStore:       cellStore,
-		onosPolicyStore: onosPolicyStore,
-		metricStore:     metricStore,
-		policies:        policies,
+		e2client:       e2Client,
+		rnibClient:     rnibClient,
+		streams:        broker.NewBroker(),
+		smModelName:    smName,
+		metricStore:    metricStore,
+		nodeManager:    nodeManager,
+		topoIDsEnabled: flag,
 	}, nil
 }
 
 type Manager struct {
-	e2client   e2client.Client
-	rnibClient rnib.Client
-	streams    broker.Broker
-	monitor    *monitoring.Monitor
-	// indCh       chan *mho.E2NodeIndication
-	// ctrlReqChs  map[string]chan *e2api.ControlMessage
-	smModelName     e2client.ServiceModelName
-	ueStore         store.Store
-	cellStore       store.Store
-	onosPolicyStore store.Store
-	metricStore     store.Store
-	policies        map[string]*monitoring.PolicyData
+	e2client       e2client.Client
+	rnibClient     rnib.Client
+	streams        broker.Broker
+	smModelName    e2client.ServiceModelName
+	metricStore    store.Store
+	nodeManager    *monitoring.NodeManager
+	topoIDsEnabled bool
 }
 
 func (m *Manager) Start() error {
@@ -116,7 +106,7 @@ func (m *Manager) watchE2Connections(ctx context.Context) error {
 			e2NodeID := relation.Relation.TgtEntityID
 
 			if !m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid) {
-				log.Debugf("Received topo event does not have RC or KPM RAN function for RIMEDO TS xApp - %v", topoEvent)
+				log.Debugf("Received topo event does not have RC RAN function for RIMEDO TS xApp - %v", topoEvent)
 				continue
 			}
 
@@ -173,6 +163,20 @@ func (m *Manager) watchMHOChanges(ctx context.Context, e2nodeID topoapi.ID) {
 	}
 
 	for e := range ch {
+		// keyx := e.Key.(string)
+		// vx, errx := m.metricStore.Get(ctx, keyx)
+		// if errx != nil {
+		// 	log.Error(errx)
+		// }
+		// nvx := vx.Value.(*store.MetricValue)
+		// rawUEIDx := nvx.RawUEID
+		// if rawUEIDx != nil && rawUEIDx.GetEnGNbUeid() != nil && rawUEIDx.GetGNbUeid() != nil {
+		// 	log.Debug("")
+		// 	log.Debug("Ueid: ", rawUEIDx.GetEnGNbUeid().RanUeid)
+		// 	log.Debug("GlobalGnbId: ", rawUEIDx.GetGNbUeid().GlobalGnbId)
+		// 	log.Debug("")
+		// }
+
 		if e.Type == store.Updated {
 			key := e.Key.(string)
 			v, err := m.metricStore.Get(ctx, key)
@@ -182,26 +186,108 @@ func (m *Manager) watchMHOChanges(ctx context.Context, e2nodeID topoapi.ID) {
 			nv := v.Value.(*store.MetricValue)
 			if e.EventMHOState.(store.MHOState) == store.Approved && nv.E2NodeID == e2nodeID {
 				rawUEID := nv.RawUEID
+				// log.Debug("")
+				// log.Debug("Ueid: ", rawUEID.GetEnGNbUeid().RanUeid)
+				// log.Debug("GlobalGnbId: ", rawUEID.GetGNbUeid().GlobalGnbId)
+				// log.Debug("")
+
+				// if rawUEID.GetENbUeid() != nil {
+				// 	log.Debug("GetENbUeid:")
+				// 	log.Debug("GUmmei: ", rawUEID.GetENbUeid().GUmmei)
+				// 	log.Debug("GlobalEnbId: ", rawUEID.GetENbUeid().GlobalEnbId)
+				// 	log.Debug("MENbUeX2ApId: ", rawUEID.GetENbUeid().MENbUeX2ApId)
+				// 	log.Debug("MENbUeX2ApIdExtension: ", rawUEID.GetENbUeid().MENbUeX2ApIdExtension)
+				// 	log.Debug("MMeUeS1ApId: ", rawUEID.GetENbUeid().MMeUeS1ApId)
+				// } else {
+				// 	log.Debug("GetENbUeid: nil")
+				// }
+
+				// if rawUEID.GetEnGNbUeid() != nil {
+				// 	log.Debug("GetEnGNbUeid:")
+				// 	log.Debug("GNbCuCpUeE1ApIdList: ", rawUEID.GetEnGNbUeid().GNbCuCpUeE1ApIdList)
+				// 	log.Debug("GNbCuUeF1ApId: ", rawUEID.GetEnGNbUeid().GNbCuUeF1ApId)
+				// 	log.Debug("GlobalEnbId: ", rawUEID.GetEnGNbUeid().GlobalEnbId)
+				// 	log.Debug("MENbUeX2ApId: ", rawUEID.GetEnGNbUeid().MENbUeX2ApId)
+				// 	log.Debug("MENbUeX2ApIdExtension: ", rawUEID.GetEnGNbUeid().MENbUeX2ApIdExtension)
+				// 	log.Debug("RanUeid: ", rawUEID.GetEnGNbUeid().RanUeid)
+				// } else {
+				// 	log.Debug("GetEnGNbUeid: nil")
+				// }
+
+				// if rawUEID.GetGNbCuUpUeid() != nil {
+				// 	log.Debug("GetGNbCuUpUeid:")
+				// 	log.Debug("GNbCuCpUeE1ApId: ", rawUEID.GetGNbCuUpUeid().GNbCuCpUeE1ApId)
+				// 	log.Debug("RanUeid: ", rawUEID.GetGNbCuUpUeid().RanUeid)
+				// } else {
+				// 	log.Debug("GetGNbCuUpUeid: nil")
+				// }
+
+				// if rawUEID.GetGNbDuUeid() != nil {
+				// 	log.Debug("GetGNbDuUeid:")
+				// 	log.Debug("GNbCuUeF1ApId: ", rawUEID.GetGNbDuUeid().GNbCuUeF1ApId)
+				// 	log.Debug("RanUeid: ", rawUEID.GetGNbDuUeid().RanUeid)
+				// } else {
+				// 	log.Debug("GetGNbDuUeid: nil")
+				// }
+
+				// if rawUEID.GetGNbUeid() != nil {
+				// 	log.Debug("GetGNbUeid:")
+				// 	log.Debug("AmfUeNgapId: ", rawUEID.GetGNbUeid().AmfUeNgapId)
+				// 	log.Debug("GNbCuCpUeE1ApIdList: ", rawUEID.GetGNbUeid().GNbCuCpUeE1ApIdList)
+				// 	log.Debug("GNbCuUeF1ApIdList: ", rawUEID.GetGNbUeid().GNbCuUeF1ApIdList)
+				// 	log.Debug("GlobalGnbId: ", rawUEID.GetGNbUeid().GlobalGnbId)
+				// 	log.Debug("GlobalNgRannodeId: ", rawUEID.GetGNbUeid().GlobalNgRannodeId)
+				// 	log.Debug("Guami: ", rawUEID.GetGNbUeid().Guami)
+				// 	log.Debug("MNgRanUeXnApId: ", rawUEID.GetGNbUeid().MNgRanUeXnApId)
+				// 	log.Debug("RanUeid: ", rawUEID.GetGNbUeid().RanUeid)
+				// } else {
+				// 	log.Debug("GetGNbUeid: nil")
+				// }
+
+				// if rawUEID.GetNgENbDuUeid() != nil {
+				// 	log.Debug("GetNgENbDuUeid:")
+				// 	log.Debug("NgENbCuUeW1ApId: ", rawUEID.GetNgENbDuUeid().NgENbCuUeW1ApId)
+				// } else {
+				// 	log.Debug("GetNgENbDuUeid: nil")
+				// }
+
+				// if rawUEID.GetNgENbUeid() != nil {
+				// 	log.Debug("GetNgENbUeid:")
+				// 	log.Debug("AmfUeNgapId: ", rawUEID.GetNgENbUeid().AmfUeNgapId)
+				// 	log.Debug("GlobalNgEnbId: ", rawUEID.GetNgENbUeid().GlobalNgEnbId)
+				// 	log.Debug("GlobalNgRannodeId: ", rawUEID.GetNgENbUeid().GlobalNgRannodeId)
+				// 	log.Debug("Guami: ", rawUEID.GetNgENbUeid().Guami)
+				// 	log.Debug("MNgRanUeXnApId: ", rawUEID.GetNgENbUeid().MNgRanUeXnApId)
+				// 	log.Debug("NgENbCuUeW1ApId: ", rawUEID.GetNgENbUeid().NgENbCuUeW1ApId)
+				// } else {
+				// 	log.Debug("GetNgENbUeid: nil")
+				// }
+
+				// log.Debug("Other:")
+				// log.Debug("GetUeid: ", rawUEID.GetUeid())
+				// log.Debug("ProtoReflect: ", rawUEID.ProtoReflect())
+
 				tgtCellID := nv.TgtCellID
+				// log.Debug("Target: ", tgtCellID)
 				header, err := control.CreateRcControlHeader(rawUEID)
 				if err != nil {
 					log.Error(err)
 				}
-				log.Debugf("send control message for key: %v, value: %v", key, nv)
+				// log.Debugf("send control message for key: %v, value: %v", key, nv)
 				payload, err := control.CreateRcControlMessage(tgtCellID)
 				if err != nil {
 					log.Error(err)
 				}
 				node := m.e2client.Node(e2client.NodeID(e2nodeID))
-				outcome, err := node.Control(ctx, &e2api.ControlMessage{
+				_, err = node.Control(ctx, &e2api.ControlMessage{
 					Header:  header,
 					Payload: payload,
 				}, nv.CallProcessID)
 				if err != nil {
 					log.Warn(err)
 				}
-				log.Debugf("Outcome: %v", outcome)
-				log.Debugf("State changed for %v from %v to %v", key, nv.State.String(), store.Done)
+				// log.Debugf("Outcome: %v", outcome)
+				// log.Debugf("State changed for %v from %v to %v", key, nv.State.String(), store.Done)
 				nv.State = store.Done
 				_, err = m.metricStore.Put(ctx, key, nv, store.Done)
 				if err != nil {
@@ -213,31 +299,31 @@ func (m *Manager) watchMHOChanges(ctx context.Context, e2nodeID topoapi.ID) {
 }
 
 func (m *Manager) createSubscription(ctx context.Context, e2nodeID topoapi.ID) error {
-	log.Debug("I'm creating subscription")
+	// log.Debug("I'm creating subscription")
 	eventTriggerData, err := subscription.CreateEventTriggerDefinition()
 	if err != nil {
 		return err
 	}
 
-	log.Debug("I'm creating subscription action")
+	// log.Debug("I'm creating subscription action")
 	actions, err := subscription.CreateSubscriptionAction()
 	if err != nil {
 		log.Warn(err)
 	}
 
-	log.Debug("I'm getting E2 Node aspects")
+	// log.Debug("I'm getting E2 Node aspects")
 	aspects, err := m.rnibClient.GetE2NodeAspects(ctx, e2nodeID)
 	if err != nil {
 		return err
 	}
 
-	log.Debug("I'm getting RAN function")
+	// log.Debug("I'm getting RAN function")
 	_, err = m.getRanFunction(aspects.ServiceModels)
 	if err != nil {
 		return err
 	}
 
-	log.Debug("I'm creating subscription specs")
+	// log.Debug("I'm creating subscription specs")
 	ch := make(chan e2api.Indication)
 	node := m.e2client.Node(e2client.NodeID(e2nodeID))
 	subName := "rimedo-ts-subscription"
@@ -248,25 +334,25 @@ func (m *Manager) createSubscription(ctx context.Context, e2nodeID topoapi.ID) e
 		},
 	}
 
-	log.Debug("I'm subscribing")
+	// log.Debug("I'm subscribing")
 	channelID, err := node.Subscribe(ctx, subName, subSpec, ch)
 	if err != nil {
-		log.Debug("There is an error")
+		// log.Debug("There is an error")
 		log.Warn(err)
 		return err
 	}
 
-	log.Debug("I'm opening reader")
+	// log.Debug("I'm opening reader")
 	streamReader, err := m.streams.OpenReader(ctx, node, subName, channelID, subSpec)
 	if err != nil {
 		return err
 	}
 	go m.sendIndicationOnStream(streamReader.StreamID(), ch)
 
-	log.Debug("I'm here, I mean in E2 Manager befor creating Monitor")
-	m.monitor = monitoring.NewMonitor(streamReader, e2nodeID, m.ueStore, m.cellStore, m.onosPolicyStore, m.metricStore, m.policies)
+	// log.Debug("I'm here, I mean in E2 Manager befor creating Monitor")
+	monitor := monitoring.NewMonitor(streamReader, e2nodeID, m.metricStore, m.nodeManager, m.topoIDsEnabled)
 
-	err = m.monitor.Start(ctx)
+	err = monitor.Start(ctx)
 	if err != nil {
 		log.Warn(err)
 	}
@@ -278,7 +364,7 @@ func (m *Manager) getRanFunction(serviceModelsInfo map[string]*topoapi.ServiceMo
 	for _, sm := range serviceModelsInfo {
 		smName := strings.ToLower(sm.Name)
 		if smName == string(m.smModelName) && sm.OID == oid {
-			log.Debug("It works")
+			// log.Debug("It works")
 			rcRanFunction := &topoapi.RCRanFunction{}
 			for _, ranFunction := range sm.RanFunctions {
 				if ranFunction.TypeUrl == ranFunction.GetTypeUrl() {
@@ -294,51 +380,6 @@ func (m *Manager) getRanFunction(serviceModelsInfo map[string]*topoapi.ServiceMo
 	return nil, errors.New(errors.NotFound, "cannot retrieve ran functions")
 
 }
-
-func (m *Manager) GetMonitor() *monitoring.Monitor {
-	return m.monitor
-}
-
-// func (m *Manager) createEventTrigger(triggerType e2sm_mho.MhoTriggerType) ([]byte, error) {
-// 	var reportPeriodMs int32
-// 	reportingPeriod := 1000
-// 	if triggerType == e2sm_mho.MhoTriggerType_MHO_TRIGGER_TYPE_PERIODIC {
-// 		reportPeriodMs = int32(reportingPeriod)
-// 	} else {
-// 		reportPeriodMs = 0
-// 	}
-// 	e2smRcEventTriggerDefinition, err := pdubuilder.CreateE2SmMhoEventTriggerDefinition(triggerType)
-// 	if err != nil {
-// 		return []byte{}, err
-// 	}
-// 	e2smRcEventTriggerDefinition.GetEventDefinitionFormats().GetEventDefinitionFormat1().SetReportingPeriodInMs(reportPeriodMs)
-
-// 	err = e2smRcEventTriggerDefinition.Validate()
-// 	if err != nil {
-// 		return []byte{}, err
-// 	}
-
-// 	protoBytes, err := proto.Marshal(e2smRcEventTriggerDefinition)
-// 	if err != nil {
-// 		return []byte{}, err
-// 	}
-
-// 	return protoBytes, err
-// }
-
-// func (m *Manager) createSubscriptionActions() []e2api.Action {
-// 	actions := make([]e2api.Action, 0)
-// 	action := &e2api.Action{
-// 		ID:   int32(0),
-// 		Type: e2api.ActionType_ACTION_TYPE_REPORT,
-// 		SubsequentAction: &e2api.SubsequentAction{
-// 			Type:       e2api.SubsequentActionType_SUBSEQUENT_ACTION_TYPE_CONTINUE,
-// 			TimeToWait: e2api.TimeToWait_TIME_TO_WAIT_ZERO,
-// 		},
-// 	}
-// 	actions = append(actions, *action)
-// 	return actions
-// }
 
 func (m *Manager) sendIndicationOnStream(streamID broker.StreamID, ch chan e2api.Indication) {
 	streamWriter, err := m.streams.GetWriter(streamID)

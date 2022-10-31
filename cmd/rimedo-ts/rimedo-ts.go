@@ -21,13 +21,15 @@ func main() {
 	log.Info("Starting RIMEDO Labs Traffic Steering xAPP")
 
 	sdranConfig := sdran.Config{
-		AppID:       "rimedo-ts",
-		E2tAddress:  "onos-e2t",
-		E2tPort:     5150,
-		TopoAddress: "onos-topo",
-		TopoPort:    5150,
-		SMName:      "oran-e2sm-rc",
-		SMVersion:   "v1",
+		AppID:         "rimedo-ts",
+		E2tAddress:    "onos-e2t",
+		E2tPort:       5150,
+		TopoAddress:   "onos-topo",
+		TopoPort:      5150,
+		SMName:        "oran-e2sm-rc",
+		SMVersion:     "v1",
+		RansimAddress: "ran-simulator",
+		RansimPort:    5150,
 	}
 
 	a1Config := a1.Config{
@@ -43,7 +45,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mgr := manager.NewManager(sdranConfig, a1Config)
+	mgr := manager.NewManager(sdranConfig, a1Config, false)
 	mgr.Run()
 
 	killSignal := make(chan os.Signal, 1)
