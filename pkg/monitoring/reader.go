@@ -1,5 +1,11 @@
-// Copy from onosproject/onos-mho/pkg/monitoring/monitor.go
-// modified by RIMEDO-Labs team
+// SPDX-FileCopyrightText: 2022-present Intel Corporation
+// SPDX-FileCopyrightText: 2019-present Open Networking Foundation <info@opennetworking.org>
+// SPDX-FileCopyrightText: 2019-present Rimedo Labs
+//
+// SPDX-License-Identifier: Apache-2.0
+// Created by Open Networking Foundation team
+// Modified by RIMEDO-Labs team
+
 package monitoring
 
 import (
@@ -40,12 +46,7 @@ func GetPlmnIDBytesFromCellGlobalID(cellGlobalID *e2sm_v2_ies.Cgi) []byte {
 
 func GetMccMncFromPlmnID(plmnId uint64, flag bool) (string, string) {
 	plmnIdString := strconv.FormatUint(plmnId, 16)
-	// log.Debug()
-	// log.Debug()
-	// log.Debug("PLMN ID: ", plmnId)
-	// log.Debug("PLMN String: ", plmnIdString)
-	// log.Debug()
-	// log.Debug()
+
 	var mcc string
 	var mnc string
 

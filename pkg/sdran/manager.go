@@ -1,5 +1,11 @@
+// SPDX-FileCopyrightText: 2022-present Intel Corporation
+// SPDX-FileCopyrightText: 2019-present Open Networking Foundation <info@opennetworking.org>
+// SPDX-FileCopyrightText: 2019-present Rimedo Labs
+//
+// SPDX-License-Identifier: Apache-2.0
 // Created by RIMEDO-Labs team
-// based on onosproject/onos-mho/pkg/manager/manager.go
+// Based on work of Open Networking Foundation team
+
 package sdran
 
 import (
@@ -102,7 +108,6 @@ func (m *Manager) Run(ctx context.Context) {
 }
 
 func (m *Manager) start(ctx context.Context) error {
-	// ctx := context.Background()
 	m.startNorthboundServer()
 	err := m.e2Manager.Start()
 	if err != nil {
@@ -115,13 +120,7 @@ func (m *Manager) start(ctx context.Context) error {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
-			// log.Debug()
-			// log.Debug()
-			// log.Debug("CELL STORE: ", m.GetCells(ctx))
-			// log.Debug()
-			// log.Debug()
 			_ = m.ransimApiHandler.GetUesParameters(ctx)
-			// log.Warnf("Warning: " + fmt.Sprint(err))
 		}
 	}()
 
@@ -239,10 +238,6 @@ func (m *Manager) GetPolicyStore() *store.Store {
 	return m.nodeManager.GetPolicyStore()
 }
 
-// func (m *Manager) GetControlChannelsMap(ctx context.Context) map[string]chan *e2api.ControlMessage {
-// 	return m.ctrlReqChs
-// }
-
 func (m *Manager) GetPolicyManager() *policy.PolicyManager {
 	return m.policyManager
 }
@@ -253,24 +248,12 @@ func (m *Manager) SwitchUeBetweenCells(ctx context.Context, ueID string, targetC
 	defer m.mutex.Unlock()
 
 	chosenUe := m.GetUe(ctx, ueID)
-	// chosenUe := availableUes[ueID]
 
 	if shouldBeSwitched(chosenUe, targetCellCGI) {
 
 		key := idutil.GenerateGnbUeIDString(chosenUe.UeID.GetGNbUeid())
 
 		if m.metricStore.HasEntry(ctx, key) {
-
-			// log.Debug()
-			// log.Debug()
-			// log.Debug("TARGET: ", targetCellCGI)
-			// log.Debug("CURRENT: ", chosenUe.CGI)
-			// log.Debug()
-			// log.Debug()
-
-			// cells := m.GetCells(ctx)
-
-			// log.Debug("CELL STORE: ", cells)
 
 			targetCell := m.GetCell(ctx, targetCellCGI)
 			servingCell := m.GetCell(ctx, chosenUe.CGI)
@@ -281,8 +264,6 @@ func (m *Manager) SwitchUeBetweenCells(ctx context.Context, ueID string, targetC
 
 			targetCell.CumulativeHandoversOut++
 			servingCell.CumulativeHandoversIn++
-
-			// m.AttachUe(ctx, chosenUe, targetCellCGI, targetCell.E2NodeID)
 
 			m.SetCell(ctx, targetCell)
 			m.SetCell(ctx, servingCell)
@@ -305,52 +286,10 @@ func (m *Manager) SwitchUeBetweenCells(ctx context.Context, ueID string, targetC
 			if err != nil {
 				return err
 			}
-			// ueData := m.nodeManager.GetUe(ctx, chosenUe.UeID.GetGNbUeid().AmfUeNgapId.String())
 			tgtCellID := m.ConvertCgiToTheRightForm(targetCell.CGI)
 			m.nodeManager.AttachUe(ctx, chosenUe, tgtCellID, targetCell.E2NodeID)
 
 		}
-		// controlChannel := m.ctrlReqChs[chosenUe.E2NodeID]
-
-		// controlHandler := &control.E2SmMhoControlHandler{
-		// 	NodeID:            chosenUe.E2NodeID,
-		// 	ControlAckRequest: e2tAPI.ControlAckRequest_NO_ACK,
-		// }
-
-		// ueIDnum, err := strconv.Atoi(chosenUe.UeID)
-		// if err != nil {
-		// 	log.Errorf("SendHORequest() failed to convert string %v to decimal number - assumption is not satisfied (UEID is a decimal number): %v", chosenUe.UeID, err)
-		// }
-
-		// ueIdentity, err := pdubuilder.CreateUeIDGNb(int64(ueIDnum), []byte{0xAA, 0xBB, 0xCC}, []byte{0xDD}, []byte{0xCC, 0xC0}, []byte{0xFC})
-		// if err != nil {
-		// 	log.Errorf("SendHORequest() Failed to create UEID: %v", err)
-		// }
-
-		// servingPlmnIDBytes := servingCell.CGI.GetNRCgi().GetPLmnidentity().GetValue()
-		// servingNCI := servingCell.CGI.GetNRCgi().GetNRcellIdentity().GetValue().GetValue()
-		// servingNCILen := servingCell.CGI.GetNRCgi().GetNRcellIdentity().GetValue().GetLen()
-
-		// go func() {
-		// 	if controlHandler.ControlHeader, err = controlHandler.CreateMhoControlHeader(servingNCI, servingNCILen, 1, servingPlmnIDBytes); err == nil {
-
-		// 		if controlHandler.ControlMessage, err = controlHandler.CreateMhoControlMessage(servingCell.CGI, ueIdentity, targetCell.CGI); err == nil {
-
-		// 			if controlRequest, err := controlHandler.CreateMhoControlRequest(); err == nil {
-
-		// 				controlChannel <- controlRequest
-		// 				log.Infof("\nCONTROL MESSAGE: UE [ID:%v, 5QI:%v] switched between CELLs [CGI:%v -> CGI:%v]\n", chosenUe.UeID, chosenUe.FiveQi, servingCell.CGIString, targetCell.CGIString)
-
-		// 			} else {
-		// 				log.Warn("Control request problem :(", err)
-		// 			}
-		// 		} else {
-		// 			log.Warn("Control message problem :(", err)
-		// 		}
-		// 	} else {
-		// 		log.Warn("Control header problem :(", err)
-		// 	}
-		// }()
 
 	}
 	return nil

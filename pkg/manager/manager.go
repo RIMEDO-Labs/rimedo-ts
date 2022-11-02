@@ -1,9 +1,11 @@
+// SPDX-FileCopyrightText: 2022-present Intel Corporation
 // SPDX-FileCopyrightText: 2019-present Open Networking Foundation <info@opennetworking.org>
 // SPDX-FileCopyrightText: 2019-present Rimedo Labs
 //
 // SPDX-License-Identifier: Apache-2.0
 // Created by RIMEDO-Labs team
-// based on any onosproject manager
+// Based on work of Open Networking Foundation team
+
 package manager
 
 import (
@@ -27,18 +29,6 @@ var log = logging.GetLogger("rimedo-ts", "ts-manager")
 var logLength = 150
 var nodesLogLen = 0
 var policiesLogLen = 0
-
-// type Config struct {
-// 	AppID         string
-// 	E2tAddress    string
-// 	E2tPort       int
-// 	TopoAddress   string
-// 	TopoPort      int
-// 	SMName        string
-// 	SMVersion     string
-// 	RansimAddress string
-// 	RansimPort    int
-// }
 
 func NewManager(sdranConfig sdran.Config, a1Config a1.Config, flag bool) *Manager {
 
@@ -97,8 +87,6 @@ func (m *Manager) start() error {
 	m.sdranManager.AddService(a1.NewA1EIService())
 	m.sdranManager.AddService(a1.NewA1PService(&policyMap, policyChange))
 
-	// handleFlag := false
-
 	m.sdranManager.Run(ctx)
 
 	m.a1Manager.Start()
@@ -123,7 +111,6 @@ func (m *Manager) start() error {
 	delay := 3
 	time.Sleep(5 * time.Second)
 	log.Info("\n\n\n\n\n\n\n\n\n\n")
-	// handleFlag = true
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
@@ -271,11 +258,6 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			cgi := cgiKeys[j]
 			nci, plmnId := monitoring.PlmnIDNciFromCGI(cgi)
 			nciInt := int64(nci)
-			// log.Debug()
-			// log.Debug()
-			// log.Debug("NCI: %v, NCI_INT: %v", nci, nciInt)
-			// log.Debug()
-			// log.Debug()
 			mcc, mnc := monitoring.GetMccMncFromPlmnID(plmnId, false)
 			cellID := policyAPI.CellID{
 				CID: policyAPI.CID{
@@ -300,11 +282,8 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			if err != nil {
 				log.Warnf("Cannot get PLMN ID from these MCC and MNC parameters:%v,%v.", tsResult.PlmnID.Mcc, tsResult.PlmnID.Mnc)
 			} else {
-				// log.Debug("BEFORE: ", tsResult.)
 				targetCellCGI := m.PlmnIDNciToTopoCGI(plmnId, uint64(*tsResult.CID.NcI))
-				// log.Debug("TARGET: ", targetCellCGI)
 				err = m.sdranManager.SwitchUeBetweenCells(ctx, keys[i], targetCellCGI)
-				// log.Debug(err)
 				if err != nil {
 					log.Error(err)
 				}
@@ -436,7 +415,6 @@ func (m *Manager) showAvailableNodes(ctx context.Context, showFlag bool, prepare
 			drawWithLine("CELLS", logLength)
 		}
 		for _, key := range keys {
-			// cgi_str := m.CgiFromTopoToIndicationFormat(cells[key].CGI)
 			cgi_str := cells[key].CGI
 			info := fmt.Sprintf("ID:%v CGI:%v UEs:[", key, cgi_str)
 			cellObject := m.sdranManager.GetCell(ctx, cgi_str)
@@ -480,7 +458,6 @@ func (m *Manager) showAvailableNodes(ctx context.Context, showFlag bool, prepare
 			drawWithLine("UES", logLength)
 		}
 		for _, key := range keys {
-			// ueIdString, _ := strconv.Atoi(key)
 			cgiString := ues[key].CGI
 			if cgiString == "" {
 				cgiString = "NONE"
@@ -494,7 +471,6 @@ func (m *Manager) showAvailableNodes(ctx context.Context, showFlag bool, prepare
 					break
 				}
 			}
-			// info = info + fmt.Sprintf("UE [ID:%v]", new_ue)
 			info := fmt.Sprintf("ID:%v RRC_STATE:%v 5QI:%v CGI:%v CGIs(RSRP): [", newKey, status, ues[key].FiveQi, cgiString)
 
 			cgi_keys := make([]string, 0, len(ues[key].RsrpTable))

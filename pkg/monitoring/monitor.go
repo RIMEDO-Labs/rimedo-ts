@@ -1,5 +1,10 @@
-// Copy from onosproject/onos-mho/pkg/monitoring/monitor.go
-// modified by RIMEDO-Labs team
+// SPDX-FileCopyrightText: 2022-present Intel Corporation
+// SPDX-FileCopyrightText: 2019-present Open Networking Foundation <info@opennetworking.org>
+// SPDX-FileCopyrightText: 2019-present Rimedo Labs
+//
+// SPDX-License-Identifier: Apache-2.0
+// Created by Intel Corporation team
+// Modified by RIMEDO-Labs team
 
 package monitoring
 
@@ -38,7 +43,6 @@ type Monitor struct {
 }
 
 func (m *Monitor) Start(ctx context.Context) error {
-	// log.Debugf("I'm starting MONITOR")
 	errCh := make(chan error)
 	go func() {
 		for {
@@ -81,37 +85,16 @@ func (m *Monitor) processIndication(ctx context.Context, indication e2api.Indica
 	headerFormat2 := header.GetRicIndicationHeaderFormats().GetIndicationHeaderFormat2()
 	messageFormat5 := message.GetRicIndicationMessageFormats().GetIndicationMessageFormat5()
 
-	// log.Debugf("Indication Header: %v", headerFormat2)
-	// log.Debugf("Indication Message: %v", messageFormat5)
-
 	callProcessID := indication.GetCallProcessId()
 
 	ueID := headerFormat2.GetUeId()
 	var tgtCellID string
 	if ueID.GetGNbUeid() != nil {
 		key := idutil.GenerateGnbUeIDString(ueID.GetGNbUeid())
-		// log.Debug("KEY: ", key)
-		// TODO make it better - implement function to recursively retrieve appropriate RAN parameter
 		tgtCellID = messageFormat5.GetRanPRequestedList()[0].GetRanParameterValueType().GetRanPChoiceStructure().GetRanParameterStructure().GetSequenceOfRanParameters()[0].
 			GetRanParameterValueType().GetRanPChoiceStructure().GetRanParameterStructure().GetSequenceOfRanParameters()[0].
 			GetRanParameterValueType().GetRanPChoiceStructure().GetRanParameterStructure().GetSequenceOfRanParameters()[0].
 			GetRanParameterValueType().GetRanPChoiceElementFalse().GetRanParameterValue().GetValuePrintableString()
-
-		//for _, m := range messageFormat5.GetRanPRequestedList() {
-		//	if m.GetRanParameterId().Value == definition.NRCGIRANParameterID {
-		//		tgtCellID = m.GetRanParameterValueType().GetRanPChoiceElementFalse().GetRanParameterValue().GetValuePrintableString()
-		//	} else {
-		//		v, err := ranparam.GetRanParameterValue(m.GetRanParameterValueType(), definition.NRCGIRANParameterID)
-		//		if err != nil {
-		//			return err
-		//		}
-		//		tgtCellID = v.GetValuePrintableString()
-		//	}
-		//}
-		// log.Debugf("Received UEID: %v", ueID)
-		// log.Debugf("Received TargetCellID: %v", tgtCellID)
-		// log.Debugf("Received CallProcessID: %v", callProcessID)
-		// log.Debugf("Received Store Key: %v", key)
 
 		if m.metricStore.HasEntry(ctx, key) {
 			v, err := m.metricStore.Get(ctx, key)
@@ -123,31 +106,6 @@ func (m *Monitor) processIndication(ctx context.Context, indication e2api.Indica
 			if nv.TgtCellID != tgtCellID && cell == nil {
 				_ = m.nodeManager.CreateCell(ctx, tgtCellID, nodeID)
 			}
-			// 	log.Debugf("State changed for %v from %v to %v", key, nv.State.String(), store.StateCreated)
-			// 	metricValue := &store.MetricValue{
-			// 		RawUEID:       ueID,
-			// 		TgtCellID:     tgtCellID,
-			// 		State:         store.StateCreated,
-			// 		CallProcessID: callProcessID,
-			// 		E2NodeID:      nodeID,
-			// 	}
-			// 	_, err := m.metricStore.Put(ctx, key, metricValue, store.StateCreated)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// 	ueData := m.nodeManager.GetUe(ctx, ueID.GetGNbUeid().AmfUeNgapId.String())
-			// 	m.nodeManager.AttachUe(ctx, ueData, tgtCellID, nodeID)
-			// 	// log.Debugf("---------------- UEID: ", ueID.String())
-			// 	// ueData := &UeData{
-			// 	// 	UeKey: ueID.GetGNbUeid().AmfUeNgapId.String(),
-			// 	// 	UeID: ueID,
-			// 	// 	E2NodeID: nodeID,
-			// 	// 	CGI: tgtCellID,
-			// 	// 	RrcState: "CONNECTED",
-			// 	// 	FiveQi: -1,
-			// 	// 	RsrpServing: -1,
-			// 	// 	RsrpTable: make(map[string]int32),
-			// 	// }
 
 			if nv.State == store.Denied {
 				// update with the same value to trigger control
@@ -175,8 +133,6 @@ func (m *Monitor) processIndication(ctx context.Context, indication e2api.Indica
 			ueData := m.nodeManager.CreateUe(ctx, ueID)
 			tgtCellID = m.ConvertCgiToTheRightForm(tgtCellID)
 			m.nodeManager.AttachUe(ctx, ueData, tgtCellID, nodeID)
-			// log.Debugf("---------------- UEID: ", ueID.String())
-
 		}
 	} else {
 		return errors.NewNotSupported("supported type GnbUeid only; received %v", ueID)

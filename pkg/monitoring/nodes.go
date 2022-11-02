@@ -1,3 +1,10 @@
+// SPDX-FileCopyrightText: 2022-present Intel Corporation
+// SPDX-FileCopyrightText: 2019-present Open Networking Foundation <info@opennetworking.org>
+// SPDX-FileCopyrightText: 2019-present Rimedo Labs
+//
+// SPDX-License-Identifier: Apache-2.0
+// Created by RIMEDO-Labs team
+
 package monitoring
 
 import (
@@ -78,8 +85,6 @@ func (c *NodeManager) CreateUe(ctx context.Context, ueID *e2smcommonies.Ueid) *U
 	for len(key) < 16 {
 		key = "0" + key
 	}
-	// log.Debug("Orignal: ", ueID.GetGNbUeid().AmfUeNgapId.Value)
-	// log.Debug("String: ", key)
 	if len(key) == 0 {
 		panic("bad data")
 	}
@@ -139,12 +144,6 @@ func (c *NodeManager) AttachUe(ctx context.Context, ueData *UeData, cgi string, 
 
 func (c *NodeManager) DetachUe(ctx context.Context, ueData *UeData) {
 	for _, cell := range c.cells {
-		// log.Debug()
-		// log.Debug()
-		// log.Debug("CELL: ", cell)
-		// log.Debug("UE: ", ueData)
-		// log.Debug()
-		// log.Debug()
 		delete(cell.Ues, ueData.UeKey)
 	}
 }
@@ -203,9 +202,6 @@ func (c *NodeManager) CreatePolicy(ctx context.Context, key string, policy *poli
 		IsEnforced: true,
 	}
 
-	// log.Debugf("Key: ", key)
-	// log.Debugf("PolicyData: ", policyData)
-
 	_, err := c.onosPolicyStore.Put(ctx, key, *policyData, store.Done)
 	if err != nil {
 		log.Panic("bad data")
@@ -248,7 +244,3 @@ func (c *NodeManager) DeletePolicy(ctx context.Context, key string) {
 func (c *NodeManager) GetPolicyStore() *store.Store {
 	return &c.onosPolicyStore
 }
-
-// func ConvertCgiToTheRightForm(cgi string) string {
-// 	return cgi[0:8] + cgi[13:14] + cgi[10:12] + cgi[8:10] + cgi[14:15] + cgi[12:13]
-// }

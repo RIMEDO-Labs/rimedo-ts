@@ -1,8 +1,10 @@
+// SPDX-FileCopyrightText: 2022-present Intel Corporation
 // SPDX-FileCopyrightText: 2019-present Open Networking Foundation <info@opennetworking.org>
 // SPDX-FileCopyrightText: 2019-present Rimedo Labs
 //
 // SPDX-License-Identifier: Apache-2.0
 // Created by RIMEDO-Labs team
+
 package policy
 
 import (
@@ -87,19 +89,14 @@ func (m *PolicyManager) CheckPerUePolicyV2(ueScope policyAPI.Scope, policyObject
 	if policyObject.API.Scope.UeID == nil {
 		return false
 	}
-	// log.Debug("GIT 1")
 
 	if *policyObject.API.Scope.UeID == "" {
 		return false
 	}
-	// log.Debug("GIT 2")
-
-	// log.Debug(*policyObject.API.Scope.UeID, *ueScope.UeID)
 
 	if *policyObject.API.Scope.UeID != *ueScope.UeID {
 		return false
 	}
-	// log.Debug("GIT 3")
 
 	if (policyObject.API.Scope.SliceID != nil) && (((policyObject.API.Scope.SliceID.SD == nil || (policyObject.API.Scope.SliceID.SD != nil && *policyObject.API.Scope.SliceID.SD == "")) ||
 		policyObject.API.Scope.SliceID.Sst <= 0 || policyObject.API.Scope.SliceID.PlmnID.Mcc == "" || policyObject.API.Scope.SliceID.PlmnID.Mnc == "") ||
@@ -107,14 +104,12 @@ func (m *PolicyManager) CheckPerUePolicyV2(ueScope policyAPI.Scope, policyObject
 			policyObject.API.Scope.SliceID.PlmnID.Mcc != ueScope.SliceID.PlmnID.Mcc || policyObject.API.Scope.SliceID.PlmnID.Mnc != ueScope.SliceID.PlmnID.Mnc)) {
 		return false
 	}
-	// log.Debug("GIT 4")
 
 	if (policyObject.API.Scope.QosID != nil) && ((policyObject.API.Scope.QosID.QcI == nil && policyObject.API.Scope.QosID.The5QI == nil) ||
 		(policyObject.API.Scope.QosID.QcI != nil && *policyObject.API.Scope.QosID.QcI != *ueScope.QosID.QcI) ||
 		(policyObject.API.Scope.QosID.The5QI != nil && *policyObject.API.Scope.QosID.The5QI != *ueScope.QosID.The5QI)) {
 		return false
 	}
-	// log.Debug("GIT 5")
 
 	if (policyObject.API.Scope.CellID != nil) && (((policyObject.API.Scope.CellID.CID.NcI == nil && policyObject.API.Scope.CellID.CID.EcI == nil) ||
 		(policyObject.API.Scope.CellID.CID.NcI != nil && *policyObject.API.Scope.CellID.CID.NcI != *ueScope.CellID.CID.NcI) ||
@@ -123,7 +118,6 @@ func (m *PolicyManager) CheckPerUePolicyV2(ueScope policyAPI.Scope, policyObject
 			(policyObject.API.Scope.CellID.PlmnID.Mcc != ueScope.CellID.PlmnID.Mcc || policyObject.API.Scope.CellID.PlmnID.Mnc != ueScope.CellID.PlmnID.Mnc))) {
 		return false
 	}
-	// log.Debug("GIT 6")
 
 	return true
 }
@@ -133,7 +127,6 @@ func (m *PolicyManager) CheckPerSlicePolicyV2(ueScope policyAPI.Scope, policyObj
 	if policyObject.API.Scope.SliceID == nil {
 		return false
 	}
-	// log.Debug("GIT 7")
 
 	if (policyObject.API.Scope.SliceID != nil && *policyObject.API.Scope.SliceID.SD == "") ||
 		policyObject.API.Scope.SliceID.Sst <= 0 ||
@@ -141,19 +134,16 @@ func (m *PolicyManager) CheckPerSlicePolicyV2(ueScope policyAPI.Scope, policyObj
 		policyObject.API.Scope.SliceID.PlmnID.Mnc == "" {
 		return false
 	}
-	// log.Debug("GIT 8")
 
 	if (policyObject.API.Scope.UeID != nil) && !((*policyObject.API.Scope.UeID == "") || (*policyObject.API.Scope.UeID == *ueScope.UeID)) {
 		return false
 	}
-	// log.Debug("GIT 9")
 
 	if (policyObject.API.Scope.QosID != nil) && ((policyObject.API.Scope.QosID.QcI == nil && policyObject.API.Scope.QosID.The5QI == nil) ||
 		(policyObject.API.Scope.QosID.QcI != nil && *policyObject.API.Scope.QosID.QcI != *ueScope.QosID.QcI) ||
 		(policyObject.API.Scope.QosID.The5QI != nil && *policyObject.API.Scope.QosID.The5QI != *ueScope.QosID.The5QI)) {
 		return false
 	}
-	// log.Debug("GIT 10")
 
 	if (policyObject.API.Scope.CellID != nil) && (((policyObject.API.Scope.CellID.CID.NcI == nil && policyObject.API.Scope.CellID.CID.EcI == nil) ||
 		(policyObject.API.Scope.CellID.CID.NcI != nil && *policyObject.API.Scope.CellID.CID.NcI != *ueScope.CellID.CID.NcI) ||
@@ -162,7 +152,6 @@ func (m *PolicyManager) CheckPerSlicePolicyV2(ueScope policyAPI.Scope, policyObj
 			(policyObject.API.Scope.CellID.PlmnID.Mcc != ueScope.CellID.PlmnID.Mcc || policyObject.API.Scope.CellID.PlmnID.Mnc != ueScope.CellID.PlmnID.Mnc))) {
 		return false
 	}
-	// log.Debug("GIT 11")
 
 	return true
 }
@@ -174,16 +163,6 @@ func (m *PolicyManager) GetTsResultForUEV2(ueScope policyAPI.Scope, rsrps []int,
 	for i := 0; i < len(rsrps); i++ {
 		preferece := m.GetPreferenceV2(ueScope, cellIds[i])
 		score := m.GetPreferenceScoresV2(preferece, rsrps[i])
-		// log.Debug()
-		// log.Debug()
-		// log.Debug()
-		// log.Debug()
-		// log.Debug("PREFERENCE: ", preferece)
-		// log.Debug("SCORE: ", score)
-		// log.Debug()
-		// log.Debug()
-		// log.Debug()
-		// log.Debug()
 		if score > bestScore {
 			bestCell = cellIds[i]
 			bestScore = score
@@ -199,20 +178,9 @@ func (m *PolicyManager) GetPreferenceScoresV2(preference string, rsrp int) float
 func (m *PolicyManager) GetPreferenceV2(ueScope policyAPI.Scope, queryCellId policyAPI.CellID) string {
 
 	var preference string = "DEFAULT"
-	// log.Debug()
-	// log.Debug()
-	// log.Debug()
-	// log.Debug()
-	// log.Debug("POLICY MAP: ", m.policyMap)
-	// log.Debug()
-	// log.Debug()
-	// log.Debug()
-	// log.Debug()
 	for _, policy := range *m.policyMap {
 		if policy.IsEnforced {
-			// log.Debug("I'M IN")
 			if m.CheckPerSlicePolicyV2(ueScope, policy) || m.CheckPerUePolicyV2(ueScope, policy) {
-				// log.Debug("I'M IN IN")
 				for _, tspResource := range policy.API.TSPResources {
 
 					for _, cellId := range tspResource.CellIDList {

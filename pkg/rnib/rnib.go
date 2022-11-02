@@ -1,5 +1,11 @@
+// SPDX-FileCopyrightText: 2022-present Intel Corporation
+// SPDX-FileCopyrightText: 2019-present Open Networking Foundation <info@opennetworking.org>
+// SPDX-FileCopyrightText: 2019-present Rimedo Labs
+//
+// SPDX-License-Identifier: Apache-2.0
 // Created by RIMEDO-Labs team
-// based on onosproject/onos-mho/pkg/rnib/rnib.go
+// Based on work of Open Networking Foundation team
+
 package rnib
 
 import (

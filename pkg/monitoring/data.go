@@ -1,5 +1,11 @@
-// Copy from onosproject/onos-mho/pkg/monitoring/monitor.go
-// modified by RIMEDO-Labs team
+// SPDX-FileCopyrightText: 2022-present Intel Corporation
+// SPDX-FileCopyrightText: 2019-present Open Networking Foundation <info@opennetworking.org>
+// SPDX-FileCopyrightText: 2019-present Rimedo Labs
+//
+// SPDX-License-Identifier: Apache-2.0
+// Created by RIMEDO-Labs team
+// Based on work of Open Networking Foundation team
+
 package monitoring
 
 import (
