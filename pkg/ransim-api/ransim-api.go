@@ -76,6 +76,7 @@ func (h *handler) GetUesParameters(ctx context.Context) error {
 		ue := receiver.Ue
 
 		id := fmt.Sprintf("%d", ue.Ueid.AmfUeNgapId)
+		key := id
 		for len(id) < 16 {
 			id = "0" + id
 		}
@@ -88,6 +89,11 @@ func (h *handler) GetUesParameters(ctx context.Context) error {
 			fiveQi = 2
 		} else {
 			fiveQi = 1
+		}
+		if ueData.FiveQi != fiveQi {
+			log.Debug("")
+			log.Infof("QUALITY MESSAGE: 5QI for UE [ID:%v] changed [5QI:%v]", key, fiveQi)
+			log.Debug("")
 		}
 		ueData.FiveQi = fiveQi
 		if ue.ServingTower != 0 {

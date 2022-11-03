@@ -274,7 +274,7 @@ func (m *Manager) SwitchUeBetweenCells(ctx context.Context, ueID string, targetC
 			}
 			nv := v.Value.(*store.MetricValue)
 
-			log.Debugf("State changed for %v from %v to %v", key, nv.State.String(), store.StateCreated)
+			// log.Debugf("State changed for %v from %v to %v", key, nv.State.String(), store.StateCreated)
 			metricValue := &store.MetricValue{
 				RawUEID:       chosenUe.UeID,
 				TgtCellID:     targetCell.CGI,

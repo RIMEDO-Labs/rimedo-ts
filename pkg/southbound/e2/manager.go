@@ -10,6 +10,7 @@ package e2
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/monitoring"
@@ -168,7 +169,19 @@ func (m *Manager) watchMHOChanges(ctx context.Context, e2nodeID topoapi.ID) {
 				if err != nil {
 					log.Error(err)
 				}
+				id := fmt.Sprintf("%d", rawUEID.GetGNbUeid().AmfUeNgapId.Value)
+				ueKey := id
+				for len(id) < 16 {
+					id = "0" + id
+				}
+				ue := m.nodeManager.GetUe(ctx, id)
+				if ue == nil {
+					log.Error("There's no such UE")
+				}
 				// log.Debugf("send control message for key: %v, value: %v", key, nv)
+				log.Debug("")
+				log.Infof("CONTROL MESSAGE: UE [ID:%v, 5QI:%v] switched to new CELL [CGI:%v]", ueKey, ue.FiveQi, ue.CGI)
+				log.Debug("")
 				payload, err := control.CreateRcControlMessage(tgtCellID)
 				if err != nil {
 					log.Error(err)
