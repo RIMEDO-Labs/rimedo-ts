@@ -12,12 +12,12 @@ include ./build/build-tools/make/onf-common.mk
 
 docker:
 	@go mod vendor
-	sudo docker build --network host -f build/Dockerfile -t onosproject/$(XAPPNAME):$(RIMEDO_TS_VERSION) .
+	sudo docker build --network host -f build/Dockerfile -t localhost:5000/$(XAPPNAME):$(RIMEDO_TS_VERSION) .
 	@rm -rf vendor
 
 images: build
 	@go mod vendor
-	docker build -f build/Dockerfile -t onosproject/$(XAPPNAME):$(RIMEDO_TS_VERSION) .
+	docker build -f build/Dockerfile -t localhost:5000/$(XAPPNAME):$(RIMEDO_TS_VERSION) .
 	@rm -rf vendor
 
 kind: images

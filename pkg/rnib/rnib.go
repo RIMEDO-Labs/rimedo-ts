@@ -57,9 +57,10 @@ func (c *Client) HasRcRANFunction(ctx context.Context, nodeID topoapi.ID, oid st
 	if err != nil {
 		return false
 	}
-
+	// log.Debugf("e2Node: " + e2Node.String())
 	for _, sm := range e2Node.GetServiceModels() {
 		if sm.OID == oid {
+			log.Debugf("SM OID: " + sm.OID)
 			return true
 		}
 	}

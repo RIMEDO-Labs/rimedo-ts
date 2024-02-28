@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"sort"
 	"strconv"
 	"sync"
@@ -84,6 +85,8 @@ func (m *Manager) start() error {
 
 	policyChange := make(chan bool)
 
+	restApiManager := m.sdranManager.GetRestApiManager()
+
 	m.sdranManager.AddService(a1.NewA1EIService())
 	m.sdranManager.AddService(a1.NewA1PService(&policyMap, policyChange))
 
@@ -126,7 +129,14 @@ func (m *Manager) start() error {
 				prepare = false
 			}
 			m.checkPolicies(ctx, flag, show, prepare)
-			m.showAvailableNodes(ctx, show, prepare)
+			err := restApiManager.PrintUes(ctx, show)
+			if err != nil {
+				log.Error("Something went wrong with printing UEs")
+			}
+			err = restApiManager.PrintCells(ctx, show)
+			if err != nil {
+				log.Error("Something went wrong with printing UEs")
+			}
 			flag = false
 		}
 	}()
@@ -219,7 +229,8 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 
 func (m *Manager) deployPolicies(ctx context.Context) {
 	policyManager := m.sdranManager.GetPolicyManager()
-	ues := m.sdranManager.GetUEs(ctx)
+	restApiManager := m.sdranManager.GetRestApiManager()
+	ues := m.sdranManager.GetUes()
 	keys := make([]string, 0, len(ues))
 	for k := range ues {
 		keys = append(keys, k)
@@ -229,13 +240,20 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 	for i := range keys {
 		var cellIDs []policyAPI.CellID
 		var rsrps []int
-		fiveQi := ues[keys[i]].FiveQi
+		fiveQi, err := strconv.ParseInt(ues[keys[i]].FiveQi, 10, 64)
+		if err != nil {
+			log.Error("Something went wrong!")
+		}
+		sst, err := strconv.ParseInt(restApiManager.GetSstSlice(ues[keys[i]].Slice, false), 10, 64)
+		if err != nil {
+			log.Error("Something went wrong!")
+		}
 		sd := "456DEF"
 		scopeUe := policyAPI.Scope{
 
 			SliceID: &policyAPI.SliceID{
 				SD:  &sd,
-				Sst: 1,
+				Sst: sst,
 				PlmnID: policyAPI.PlmnID{
 					Mcc: "138", // "314",
 					Mnc: "426", // "628",
@@ -247,8 +265,8 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			},
 		}
 
-		cgiKeys := make([]string, 0, len(ues[keys[i]].RsrpTable))
-		for cgi := range ues[keys[i]].RsrpTable {
+		cgiKeys := make([]string, 0, len(ues[keys[i]].RsrpTab))
+		for cgi := range ues[keys[i]].RsrpTab {
 			cgiKeys = append(cgiKeys, cgi)
 		}
 		inside := false
@@ -256,12 +274,27 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 
 			inside = true
 			cgi := cgiKeys[j]
-			nci, plmnId := monitoring.PlmnIDNciFromCGI(cgi)
-			nciInt := int64(nci)
-			mcc, mnc := monitoring.GetMccMncFromPlmnID(plmnId, false)
+			// nci, plmnId := monitoring.PlmnIDNciFromCGI(cgi)
+			tab := make([]string, 0)
+			var temp string
+			for _, character := range cgi {
+				if character != '/' {
+					temp = temp + fmt.Sprint(character)
+				} else {
+					tab = append(tab, temp)
+					temp = ""
+				}
+			}
+			nci, err := strconv.ParseInt(restApiManager.TranslateUtfAscii(tab[1]), 10, 64)
+			if err != nil {
+				log.Error("Something went wrong!")
+			}
+			mcc := restApiManager.TranslateUtfAscii(tab[2])
+			mnc := restApiManager.TranslateUtfAscii(tab[0])
+			// mcc, mnc := monitoring.GetMccMncFromPlmnID(plmnId, false)
 			cellID := policyAPI.CellID{
 				CID: policyAPI.CID{
-					NcI: &nciInt,
+					NcI: &nci,
 				},
 				PlmnID: policyAPI.PlmnID{
 					Mcc: mcc,
@@ -270,25 +303,41 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			}
 
 			cellIDs = append(cellIDs, cellID)
-			rsrps = append(rsrps, int(ues[keys[i]].RsrpTable[cgiKeys[j]]))
+			rsrp, err := strconv.ParseInt(ues[keys[i]].RsrpTab[cgiKeys[j]], 10, 0)
+			if err != nil {
+				log.Error("Something went wrong!")
+			}
+			rsrps = append(rsrps, int(rsrp))
 
 		}
 
 		if inside {
 
 			tsResult := policyManager.GetTsResultForUEV2(scopeUe, rsrps, cellIDs)
-			plmnId, err := monitoring.GetPlmnIdFromMccMnc(tsResult.PlmnID.Mcc, tsResult.PlmnID.Mnc, false)
+			// plmnId, err := monitoring.GetPlmnIdFromMccMnc(tsResult.PlmnID.Mcc, tsResult.PlmnID.Mnc, false)
 
-			if err != nil {
-				log.Warnf("Cannot get PLMN ID from these MCC and MNC parameters:%v,%v.", tsResult.PlmnID.Mcc, tsResult.PlmnID.Mnc)
+			// if err != nil {
+			// 	log.Warnf("Cannot get PLMN ID from these MCC and MNC parameters:%v,%v.", tsResult.PlmnID.Mcc, tsResult.PlmnID.Mnc)
+			// } else {
+			// 	targetCellCGI := m.PlmnIDNciToTopoCGI(plmnId, uint64(*tsResult.CID.NcI))
+			// 	err = m.sdranManager.SwitchUeBetweenCells(ctx, keys[i], targetCellCGI)
+			// 	if err != nil {
+			// 		log.Error(err)
+			// 	}
+			// }
+			ascii := tsResult.PlmnID.Mnc + "47" + tsResult.PlmnID.Mnc + "47" + fmt.Sprint(tsResult.CID.NcI)
+			if len(ascii) > 16 {
+				ascii = ascii[16-len(ascii):]
 			} else {
-				targetCellCGI := m.PlmnIDNciToTopoCGI(plmnId, uint64(*tsResult.CID.NcI))
-				err = m.sdranManager.SwitchUeBetweenCells(ctx, keys[i], targetCellCGI)
-				if err != nil {
-					log.Error(err)
+				for i := 0; i < 16-len(ascii); i++ {
+					ascii = "0" + ascii
 				}
 			}
-
+			targetCellCGI := restApiManager.GetUtfAscii(ascii, false, true)
+			err := restApiManager.HandoverControl(ctx, keys[i], targetCellCGI)
+			if err != nil {
+				log.Error("Something went wrong with TS HO!")
+			}
 		}
 
 		cellIDs = nil
@@ -397,121 +446,6 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag 
 	m.deployPolicies(ctx)
 }
 
-func (m *Manager) showAvailableNodes(ctx context.Context, showFlag bool, prepareFlag bool) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	cellLen := 0
-	ueLen := 0
-	cells := m.sdranManager.GetCellTypes(ctx)
-	cellsObjects := m.sdranManager.GetCells(ctx)
-	keys := make([]string, 0, len(cells))
-	for k := range cells {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	if prepareFlag && len(cells) > 0 && len(cellsObjects) > 0 {
-		if showFlag {
-			log.Debug("")
-			drawWithLine("CELLS", logLength)
-		}
-		for _, key := range keys {
-			cgi_str := cells[key].CGI
-			info := fmt.Sprintf("ID:%v CGI:%v UEs:[", key, cgi_str)
-			cellObject := m.sdranManager.GetCell(ctx, cgi_str)
-			inside := false
-			if cellObject != nil {
-				for ue := range cellObject.Ues {
-					inside = true
-					new_ue := ue
-					for i := 0; i < len(ue); i++ {
-						if ue[i:i+1] == "0" {
-							new_ue = ue[i+1:]
-						} else {
-							break
-						}
-					}
-					info = info + new_ue + " "
-				}
-			}
-			if inside {
-				info = info[:len(info)-1]
-			}
-			info = info + "]"
-			if cellLen < len(info) {
-				cellLen = len(info)
-			}
-			if showFlag {
-				log.Debug(info)
-			}
-		}
-	}
-
-	ues := m.sdranManager.GetUEs(ctx)
-	keys = make([]string, 0, len(ues))
-	for k := range ues {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	if prepareFlag && len(ues) > 0 {
-		if showFlag {
-			log.Debug("")
-			drawWithLine("UES", logLength)
-		}
-		for _, key := range keys {
-			cgiString := ues[key].CGI
-			if cgiString == "" {
-				cgiString = "NONE"
-			}
-			status := ues[key].RrcState
-			newKey := key
-			for i := 0; i < len(key); i++ {
-				if key[i:i+1] == "0" {
-					newKey = key[i+1:]
-				} else {
-					break
-				}
-			}
-			info := fmt.Sprintf("ID:%v RRC_STATE:%v 5QI:%v CGI:%v CGIs(RSRP): [", newKey, status, ues[key].FiveQi, cgiString)
-
-			cgi_keys := make([]string, 0, len(ues[key].RsrpTable))
-			for k := range ues[key].RsrpTable {
-				cgi_keys = append(cgi_keys, k)
-			}
-			sort.Strings(cgi_keys)
-			inside := false
-			for _, cgi := range cgi_keys {
-				inside = true
-				info += fmt.Sprintf("%v (%v) ", cgi, ues[key].RsrpTable[cgi])
-				rsrp_str := strconv.Itoa(int(ues[key].RsrpTable[cgi]))
-				if len(rsrp_str) < 4 {
-					diff := 4 - len(rsrp_str)
-					for i := 0; i < diff; i++ {
-						info = info + " "
-					}
-				}
-			}
-			if inside {
-				info = info[:len(info)-1]
-			}
-			info = info + "]"
-			if ueLen < len(info) {
-				ueLen = len(info)
-			}
-			if showFlag {
-				log.Debug(info)
-			}
-		}
-		if showFlag {
-			log.Debug("")
-		}
-	}
-	if cellLen > ueLen {
-		nodesLogLen = cellLen
-	} else {
-		nodesLogLen = ueLen
-	}
-}
-
 func (m *Manager) changeCellsTypes(ctx context.Context) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -576,4 +510,43 @@ func compareLengths() {
 		temp = policiesLogLen
 	}
 	logLength = temp
+}
+
+func separateCgi(cgi string) (string, string, string) {
+
+	var mnc string
+	var mcc string
+	var nci string
+
+	counter := 0
+	for i := 0; i < len(cgi); i++ {
+		character := cgi[i : i+1]
+		if !(character == "/") {
+			switch counter {
+			case 0:
+				mnc = mnc + character
+				break
+			case 1:
+				mcc = mcc + character
+				break
+			case 2:
+				nci = nci + character
+				break
+			default:
+				break
+			}
+		} else {
+			counter++
+		}
+	}
+
+	return mnc, mcc, nci
+
+}
+
+func separateCgiV2(cgi string) []string {
+
+	re := regexp.MustCompile("[0-9]+")
+	return re.FindAllString(cgi, -1)
+
 }

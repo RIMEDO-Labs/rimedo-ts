@@ -1,0 +1,1 @@
+helm -n riab install rimedo-ts ~/Documents/onf_software/sdran-in-a-box/workspace/helm-charts/sdran-helm-charts/rimedo-ts --values ~/Documents/onf_software/sdran-in-a-box/workspace/helm-charts/sdran-helm-charts/rimedo-ts/values.yaml

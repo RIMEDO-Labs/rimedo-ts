@@ -18,7 +18,7 @@ var log = logging.GetLogger("rimedo-ts")
 func main() {
 
 	log.SetLevel(logging.DebugLevel)
-	log.Info("Starting RIMEDO Labs Traffic Steering xAPP")
+	log.Info("Starting RIMEDO Labs Traffic Steering xAPP - LOCAL")
 
 	sdranConfig := sdran.Config{
 		AppID:         "rimedo-ts",
