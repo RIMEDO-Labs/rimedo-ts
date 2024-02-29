@@ -860,6 +860,7 @@ func (m *RestManager) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	log.Debug("Passed")
 	err = m.GetUeInfo(ctx)
 	if err != nil {
 		return err
