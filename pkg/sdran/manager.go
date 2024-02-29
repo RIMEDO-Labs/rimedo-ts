@@ -113,7 +113,17 @@ func (m *Manager) start(ctx context.Context) error {
 		return err
 	}
 	go m.mhoCtrl.Run(ctx)
-
+	go func() {
+		for {
+			err = m.restApiManager.Run(ctx)
+			if err != nil {
+				break
+			}
+		}
+	}()
+	if err != nil {
+		return err
+	}
 	// time.Sleep(30 * time.Second)
 	// go func() {
 	// 	for {

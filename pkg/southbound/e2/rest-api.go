@@ -12,7 +12,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	resty "github.com/go-resty/resty/v2"
@@ -154,9 +153,9 @@ func (m *RestManager) DashMarks(s string, cell bool) string {
 		printLen = 20
 	}
 	for printLen != len("|"+output+"|") {
-		log.Debug(printLen)
-		log.Debug(len("|" + output + "|"))
-		log.Debug("|" + output + "|")
+		// log.Debug(printLen)
+		// log.Debug(len("|" + output + "|"))
+		// log.Debug("|" + output + "|")
 		if printLen > len("|"+output+"|") {
 			if counter%2 == 0 {
 				output = output + "-"
@@ -855,15 +854,17 @@ func (m *RestManager) HandoverControl(ctx context.Context, ueId string, cgi stri
 
 }
 
-func (m *RestManager) Run(ctx context.Context) {
+func (m *RestManager) Run(ctx context.Context) error {
 
-	for {
-		m.UpdateData()
-		m.GetUeInfo(ctx)
-		m.PrintUes(ctx, m.ueLen != 0)
-		m.PrintCells(ctx, m.cellLen != 0)
-
-		time.Sleep(1 * time.Second)
+	err := m.UpdateData()
+	if err != nil {
+		return err
 	}
+	err = m.GetUeInfo(ctx)
+	if err != nil {
+		return err
+	}
+	log.Debug("DATA UPDATED!")
+	return nil
 
 }

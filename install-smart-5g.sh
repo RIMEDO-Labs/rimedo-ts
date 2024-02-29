@@ -1,1 +1,1 @@
-helm -n riab install rimedo-ts ~/smart5g/rimedo-ts/helm-charts/rimedo-ts --values ~/smart5g/rimedo-ts/helm-charts/rimedo-ts/values.yaml
+helm -n riab install rimedo-ts ~/smart5g/rimedo-ts/helm-charts --values ~/smart5g/rimedo-ts/helm-charts/values.yaml
