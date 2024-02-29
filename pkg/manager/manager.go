@@ -305,7 +305,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			}
 
 			cellIDs = append(cellIDs, cellID)
-			rsrp, err := strconv.ParseInt(ues[keys[i]].RsrpTab[cgiKeys[j]], 10, 0)
+			rsrp, err := strconv.ParseFloat(ues[keys[i]].RsrpTab[cgiKeys[j]], 64)
 			if err != nil {
 				log.Error("Something went wrong!")
 			}
