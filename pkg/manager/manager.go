@@ -278,6 +278,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			tab := make([]string, 0)
 			var temp string
 			for _, character := range cgi {
+				log.Debug(character)
 				if character != '/' {
 					temp = temp + fmt.Sprint(character)
 				} else {
