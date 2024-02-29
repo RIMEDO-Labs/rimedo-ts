@@ -124,7 +124,7 @@ func (m *Manager) watchE2Connections(ctx context.Context) error {
 				}
 			}()
 
-			go m.watchMHOChanges(ctx, e2NodeID)
+			// go m.watchMHOChanges(ctx, e2NodeID)
 		} else if topoEvent.Type == topoapi.EventType_REMOVED {
 			relation := topoEvent.Object.Obj.(*topoapi.Object_Relation)
 			e2NodeID := relation.Relation.TgtEntityID

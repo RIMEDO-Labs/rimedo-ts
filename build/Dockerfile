@@ -1,4 +1,5 @@
-FROM onosproject/golang-build:v1.0 as build
+# FROM onosproject/golang-build:v1.0 as build
+FROM golang:1.21.5 as build
 
 ENV GO111MODULE=on
 ENV XAPPNAME=rimedo-ts
