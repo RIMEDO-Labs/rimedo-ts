@@ -327,7 +327,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// 		log.Error(err)
 			// 	}
 			// }
-			ascii := tsResult.PlmnID.Mnc + "47" + tsResult.PlmnID.Mnc + "47" + fmt.Sprint(*tsResult.CID.NcI)
+			ascii := tsResult.PlmnID.Mnc + "47" + fmt.Sprint(*tsResult.CID.NcI) + "47" + tsResult.PlmnID.Mcc
 
 			if len(ascii) > 16 {
 				ascii = ascii[len(ascii)-16:]
