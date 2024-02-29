@@ -285,6 +285,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 					temp = ""
 				}
 			}
+			log.Debug(tab)
 			nci, err := strconv.ParseInt(restApiManager.TranslateUtfAscii(tab[1]), 10, 64)
 			if err != nil {
 				log.Error("Something went wrong!")
