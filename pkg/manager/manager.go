@@ -280,13 +280,13 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			for s := 0; s < len(cgi); s++ {
 				// log.Debug(character)
 				if cgi[s:s+1] != "/" {
-					temp = temp + fmt.Sprint(cgi[s])
+					temp = temp + cgi[s:s+1]
 				} else {
 					tab = append(tab, temp)
 					temp = ""
 				}
 			}
-			log.Debug(tab)
+			tab = append(tab, temp)
 			nci, err := strconv.ParseInt(restApiManager.TranslateUtfAscii(tab[1]), 10, 64)
 			if err != nil {
 				log.Error("Something went wrong!")
