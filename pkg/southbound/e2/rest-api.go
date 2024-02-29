@@ -348,6 +348,7 @@ func (m *RestManager) UpdateData() error {
 	var cellData *ViaviCell
 	if err := m.client.JSONUnmarshal(cellResponse.Body(), &cellData); err != nil {
 		err = errors.New("ERROR: " + fmt.Sprint(err))
+		log.Debug(err)
 		return err
 	}
 	log.Debug("Passed cell data unmarshalling")
