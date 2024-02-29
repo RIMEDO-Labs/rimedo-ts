@@ -163,6 +163,7 @@ func (m *PolicyManager) GetTsResultForUEV2(ueScope policyAPI.Scope, rsrps []int,
 	for i := 0; i < len(rsrps); i++ {
 		preferece := m.GetPreferenceV2(ueScope, cellIds[i])
 		score := m.GetPreferenceScoresV2(preferece, rsrps[i])
+		log.Debug("PREF: " + preferece + ", CELL: " + fmt.Sprint(cellIds[i]) + ", SCORE: " + fmt.Sprint(score))
 		if score > bestScore {
 			bestCell = cellIds[i]
 			bestScore = score
