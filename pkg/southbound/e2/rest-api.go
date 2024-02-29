@@ -191,7 +191,7 @@ func (m *RestManager) TranslateUtfAscii(id string) string {
 		ascii = ascii + fmt.Sprint(character)
 	}
 	if len(ascii) > 16 {
-		ascii = ascii[16-len(ascii):]
+		ascii = ascii[(16 - len(ascii)):]
 	} else {
 		for i := 0; i < 16-len(ascii); i++ {
 			ascii = "0" + ascii
