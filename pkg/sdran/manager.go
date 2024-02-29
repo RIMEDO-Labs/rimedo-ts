@@ -10,14 +10,11 @@ package sdran
 
 import (
 	"context"
-	"strconv"
 	"sync"
-	"time"
 
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/controller"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/monitoring"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/policy"
-	ransimapi "github.com/RIMEDO-Labs/rimedo-ts/pkg/ransim-api"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/rnib"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/southbound/e2"
 	policyAPI "github.com/onosproject/onos-a1-dm/go/policy_schemas/traffic_steering_preference/v2"
@@ -53,7 +50,7 @@ func NewManager(config Config, flag bool) *Manager {
 
 	nodeManager := monitoring.NewNodeManager(ueStore, cellStore, onosPolicyStore, policyMap)
 
-	ransimApiHandler, _ := ransimapi.NewHandler(config.RansimAddress+":"+strconv.Itoa(config.RansimPort), nodeManager)
+	// ransimApiHandler, _ := ransimapi.NewHandler(config.RansimAddress+":"+strconv.Itoa(config.RansimPort), nodeManager)
 
 	options := e2.Options{
 		AppID:       config.AppID,
@@ -73,33 +70,33 @@ func NewManager(config Config, flag bool) *Manager {
 	restManager := e2.NewRestManager(ueStore, cellStore)
 
 	manager := &Manager{
-		e2Manager:        e2Manager,
-		restApiManager:   restManager,
-		monitor:          nil,
-		mhoCtrl:          controller.NewMHOController(metricStore),
-		policyManager:    policy.NewPolicyManager(&policyMap),
-		nodeManager:      nodeManager,
-		metricStore:      metricStore,
-		services:         []service.Service{},
-		mutex:            sync.RWMutex{},
-		topoIDsEnabled:   flag,
-		ransimApiHandler: ransimApiHandler,
+		e2Manager:      e2Manager,
+		restApiManager: restManager,
+		monitor:        nil,
+		mhoCtrl:        controller.NewMHOController(metricStore),
+		policyManager:  policy.NewPolicyManager(&policyMap),
+		nodeManager:    nodeManager,
+		metricStore:    metricStore,
+		services:       []service.Service{},
+		mutex:          sync.RWMutex{},
+		topoIDsEnabled: flag,
+		// ransimApiHandler: ransimApiHandler,
 	}
 	return manager
 }
 
 type Manager struct {
-	e2Manager        e2.Manager
-	restApiManager   *e2.RestManager
-	monitor          *monitoring.Monitor
-	mhoCtrl          *controller.MHOController
-	policyManager    *policy.PolicyManager
-	nodeManager      *monitoring.NodeManager
-	metricStore      store.Store
-	services         []service.Service
-	mutex            sync.RWMutex
-	topoIDsEnabled   bool
-	ransimApiHandler ransimapi.Handler
+	e2Manager      e2.Manager
+	restApiManager *e2.RestManager
+	monitor        *monitoring.Monitor
+	mhoCtrl        *controller.MHOController
+	policyManager  *policy.PolicyManager
+	nodeManager    *monitoring.NodeManager
+	metricStore    store.Store
+	services       []service.Service
+	mutex          sync.RWMutex
+	topoIDsEnabled bool
+	// ransimApiHandler ransimapi.Handler
 }
 
 func (m *Manager) Run(ctx context.Context) {
@@ -117,13 +114,13 @@ func (m *Manager) start(ctx context.Context) error {
 	}
 	go m.mhoCtrl.Run(ctx)
 
-	time.Sleep(30 * time.Second)
-	go func() {
-		for {
-			time.Sleep(1 * time.Second)
-			_ = m.ransimApiHandler.GetUesParameters(ctx)
-		}
-	}()
+	// time.Sleep(30 * time.Second)
+	// go func() {
+	// 	for {
+	// 		time.Sleep(1 * time.Second)
+	// 		_ = m.ransimApiHandler.GetUesParameters(ctx)
+	// 	}
+	// }()
 
 	return nil
 }

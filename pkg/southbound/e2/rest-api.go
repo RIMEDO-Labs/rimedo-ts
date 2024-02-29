@@ -150,7 +150,13 @@ func (m *RestManager) DashMarks(s string, cell bool) string {
 	}
 
 	counter := 1
+	if printLen == 0 {
+		printLen = 20
+	}
 	for printLen != len("|"+output+"|") {
+		log.Debug(printLen)
+		log.Debug(len("|" + output + "|"))
+		log.Debug("|" + output + "|")
 		if printLen > len("|"+output+"|") {
 			if counter%2 == 0 {
 				output = output + "-"
