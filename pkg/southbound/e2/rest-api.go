@@ -344,6 +344,7 @@ func (m *RestManager) UpdateData() error {
 		return err
 	}
 	log.Debug("Passed cell data requesting")
+	log.Debug(cellResponse)
 	var cellData *ViaviCell
 	if err := m.client.JSONUnmarshal(cellResponse.Body(), &cellData); err != nil {
 		err = errors.New("ERROR: " + fmt.Sprint(err))
