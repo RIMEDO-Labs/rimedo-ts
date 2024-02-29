@@ -337,28 +337,32 @@ func (m *RestManager) UpdateData() error {
 	if err != nil {
 		return err
 	}
-
+	log.Debug("Got last tests")
 	cellParams := fmt.Sprintf("?db=" + m.lastTest + "&q=SELECT+*+FROM+CellReports+GROUP+BY+\"Viavi.Cell.Name\"+ORDER+BY+\"time\"+DESC+LIMIT+1")
 	cellResponse, err := m.RequestData(false, nil, cellParams)
 	if err != nil {
 		return err
 	}
+	log.Debug("Passed cell data requesting")
 	var cellData *ViaviCell
 	if err := m.client.JSONUnmarshal(cellResponse.Body(), &cellData); err != nil {
 		err = errors.New("ERROR: " + fmt.Sprint(err))
 		return err
 	}
-
+	log.Debug("Passed cell data unmarshalling")
 	ueParams := fmt.Sprintf("?db=" + m.lastTest + "&q=SELECT+*+FROM+UEReports+WHERE+\"report\"+=+'serving'+GROUP+BY+\"Viavi.UE.Name\"+ORDER+BY+\"time\"+DESC+LIMIT+1")
 	ueResponse, err := m.RequestData(false, nil, ueParams)
 	if err != nil {
 		return err
 	}
+	log.Debug("Passed ue data requesting")
+
 	var ueData *ViaviUE
 	if err := m.client.JSONUnmarshal(ueResponse.Body(), &ueData); err != nil {
 		err = errors.New("ERROR: " + fmt.Sprint(err))
 		return err
 	}
+	log.Debug("Passed ue data unmarshalling")
 
 	m.lastTimestamp = fmt.Sprint(ueData.Results[0].Series[0].Values[0][0])
 
