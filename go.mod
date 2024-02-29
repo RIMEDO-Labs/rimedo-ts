@@ -15,7 +15,6 @@ require (
 	github.com/onosproject/onos-mho v0.3.6
 	github.com/onosproject/onos-ric-sdk-go v0.8.11
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/net v0.17.0 // indirect
 	google.golang.org/grpc v1.46.0
 	google.golang.org/protobuf v1.28.0
 )

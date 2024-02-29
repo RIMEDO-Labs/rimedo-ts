@@ -367,7 +367,7 @@ func (m *RestManager) UpdateData() error {
 func (m *RestManager) PrintUes(ctx context.Context, print bool) error {
 
 	if print {
-		fmt.Println(m.DashMarks("UEs", false))
+		log.Debug(m.DashMarks("UEs", false))
 	}
 
 	values := make([]string, 0, len(m.ueList))
@@ -404,7 +404,7 @@ func (m *RestManager) PrintUes(ctx context.Context, print bool) error {
 			}
 			output = output + suboutput + "]"
 			if print {
-				fmt.Println(output)
+				log.Debug(output)
 			}
 
 			if m.ueLen < len(output) {
@@ -416,8 +416,8 @@ func (m *RestManager) PrintUes(ctx context.Context, print bool) error {
 	}
 
 	if print {
-		fmt.Println(m.DashMarks("", false))
-		fmt.Println("")
+		log.Debug(m.DashMarks("", false))
+		log.Debug("")
 	}
 
 	return nil
@@ -547,7 +547,7 @@ func (m *RestManager) GetUes() map[string]*UeData {
 func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 
 	if print {
-		fmt.Println(m.DashMarks("Cells", true))
+		log.Debug(m.DashMarks("Cells", true))
 	}
 
 	values := make([]string, 0, len(m.cellList))
@@ -584,7 +584,7 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 			}
 			output = output + suboutput + "]"
 			if print {
-				fmt.Println(output)
+				log.Debug(output)
 			}
 
 			if m.cellLen < len(output) {
@@ -596,8 +596,8 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 	}
 
 	if print {
-		fmt.Println(m.DashMarks("", true))
-		fmt.Println("")
+		log.Debug(m.DashMarks("", true))
+		log.Debug("")
 	}
 
 	return nil
@@ -826,9 +826,9 @@ func (m *RestManager) HandoverControl(ctx context.Context, ueId string, cgi stri
 			_, err = m.RequestData(false, byteReader, "")
 			if err == nil {
 				m.hoActionId++
-				fmt.Printf("E2 Control Message: UE (ID: %s) has been switched to another Cell (CGI_1: %s -> CGI_2: %s)", ueId, ueData.Cgi, cgi)
-				fmt.Println("")
-				fmt.Println("")
+				log.Info("E2 Control Message: UE (ID: %s) has been switched to another Cell (CGI_1: %s -> CGI_2: %s)", ueId, ueData.Cgi, cgi)
+				log.Info("")
+				log.Info("")
 			} else {
 				return err
 			}
