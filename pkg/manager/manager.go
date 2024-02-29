@@ -329,7 +329,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// }
 			ascii := tsResult.PlmnID.Mnc + "47" + tsResult.PlmnID.Mnc + "47" + fmt.Sprint(tsResult.CID.NcI)
 			if len(ascii) > 16 {
-				ascii = ascii[16-len(ascii):]
+				ascii = ascii[len(ascii)-16:]
 			} else {
 				for i := 0; i < 16-len(ascii); i++ {
 					ascii = "0" + ascii
