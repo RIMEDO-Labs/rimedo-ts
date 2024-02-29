@@ -342,7 +342,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// log.Debug(keys[i] + " -> " + targetCellCGI)
 			err := restApiManager.HandoverControl(ctx, keys[i], targetCellCGI)
 			if err != nil {
-				log.Error(err)
+				log.Warn(err)
 			}
 		}
 
