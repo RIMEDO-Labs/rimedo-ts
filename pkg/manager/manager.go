@@ -277,9 +277,9 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// nci, plmnId := monitoring.PlmnIDNciFromCGI(cgi)
 			tab := make([]string, 0)
 			var temp string
-			for s := range cgi {
+			for s := 0; s < len(cgi); s++ {
 				// log.Debug(character)
-				if cgi[s] != '/' {
+				if cgi[s:s+1] != "/" {
 					temp = temp + fmt.Sprint(cgi[s])
 				} else {
 					tab = append(tab, temp)
