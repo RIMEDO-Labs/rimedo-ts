@@ -156,7 +156,7 @@ func (m *PolicyManager) CheckPerSlicePolicyV2(ueScope policyAPI.Scope, policyObj
 	return true
 }
 
-func (m *PolicyManager) GetTsResultForUEV2(ueScope policyAPI.Scope, rsrps []int, cellIds []policyAPI.CellID) policyAPI.CellID {
+func (m *PolicyManager) GetTsResultForUEV2(ueScope policyAPI.Scope, rsrps []float64, cellIds []policyAPI.CellID) policyAPI.CellID {
 
 	var bestCell policyAPI.CellID
 	bestScore := -math.MaxFloat64
@@ -172,7 +172,7 @@ func (m *PolicyManager) GetTsResultForUEV2(ueScope policyAPI.Scope, rsrps []int,
 	return bestCell
 }
 
-func (m *PolicyManager) GetPreferenceScoresV2(preference string, rsrp int) float64 {
+func (m *PolicyManager) GetPreferenceScoresV2(preference string, rsrp float64) float64 {
 	return float64(rsrp) + float64(m.preferenceMap[preference])
 }
 

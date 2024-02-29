@@ -177,7 +177,7 @@ func (m *RestManager) DashMarks(s string, cell bool) string {
 	return output
 }
 
-func (m *RestManager) TranslateUtfAscii(id string) string {
+func (m *RestManager) TranslateUtfAscii(id string, cell bool) string {
 
 	tab := make([]byte, utf8.RuneCountInString(id))
 	counter := 0
@@ -193,8 +193,10 @@ func (m *RestManager) TranslateUtfAscii(id string) string {
 	if len(ascii) > 16 {
 		ascii = ascii[len(ascii)-16:]
 	} else {
-		for i := 0; i < 16-len(ascii); i++ {
-			ascii = "0" + ascii
+		if !cell {
+			for i := 0; i < 16-len(ascii); i++ {
+				ascii = "0" + ascii
+			}
 		}
 	}
 
@@ -437,7 +439,7 @@ func (m *RestManager) PrintUes(ctx context.Context, print bool) error {
 
 func (m *RestManager) CreateUe(ctx context.Context, id string, cgi string, rrcState string, fiveQi string, slice string, rsrpTab map[string]string) (*UeData, error) {
 
-	asciiId := m.TranslateUtfAscii(id)
+	asciiId := m.TranslateUtfAscii(id, false)
 	m.SaveUtfAscii(id, asciiId, false)
 
 	ueData := &UeData{
@@ -617,7 +619,7 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 
 func (m *RestManager) CreateCell(ctx context.Context, cgi string) (*CellData, error) {
 
-	asciiCgi := m.TranslateUtfAscii(cgi)
+	asciiCgi := m.TranslateUtfAscii(cgi, true)
 	m.SaveUtfAscii(cgi, asciiCgi, true)
 
 	cellData := &CellData{

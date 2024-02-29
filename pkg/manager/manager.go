@@ -239,7 +239,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 
 	for i := range keys {
 		var cellIDs []policyAPI.CellID
-		var rsrps []int
+		var rsrps []float64
 		fiveQi, err := strconv.ParseInt(ues[keys[i]].FiveQi, 10, 64)
 		if err != nil {
 			log.Error("Something went wrong!")
@@ -287,12 +287,12 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 				}
 			}
 			tab = append(tab, temp)
-			nci, err := strconv.ParseInt(restApiManager.TranslateUtfAscii(tab[1]), 10, 64)
+			nci, err := strconv.ParseInt(restApiManager.TranslateUtfAscii(tab[1], true), 10, 64)
 			if err != nil {
 				log.Error("Something went wrong!")
 			}
-			mcc := restApiManager.TranslateUtfAscii(tab[2])
-			mnc := restApiManager.TranslateUtfAscii(tab[0])
+			mcc := restApiManager.TranslateUtfAscii(tab[2], true)
+			mnc := restApiManager.TranslateUtfAscii(tab[0], true)
 			// mcc, mnc := monitoring.GetMccMncFromPlmnID(plmnId, false)
 			cellID := policyAPI.CellID{
 				CID: policyAPI.CID{
@@ -309,7 +309,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			if err != nil {
 				log.Error("Something went wrong!")
 			}
-			rsrps = append(rsrps, int(rsrp))
+			rsrps = append(rsrps, rsrp)
 
 		}
 
@@ -327,14 +327,17 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// 		log.Error(err)
 			// 	}
 			// }
-			ascii := tsResult.PlmnID.Mnc + "47" + tsResult.PlmnID.Mnc + "47" + fmt.Sprint(tsResult.CID.NcI)
+			ascii := tsResult.PlmnID.Mnc + "47" + tsResult.PlmnID.Mnc + "47" + fmt.Sprint(*tsResult.CID.NcI)
+
 			if len(ascii) > 16 {
 				ascii = ascii[len(ascii)-16:]
-			} else {
-				for i := 0; i < 16-len(ascii); i++ {
-					ascii = "0" + ascii
-				}
 			}
+			log.Debug("ASCII: " + ascii)
+			// else {
+			// 	for i := 0; i < 16-len(ascii); i++ {
+			// 		ascii = "0" + ascii
+			// 	}
+			// }
 			targetCellCGI := restApiManager.GetUtfAscii(ascii, false, true)
 			log.Debug(keys[i] + " -> " + targetCellCGI)
 			err := restApiManager.HandoverControl(ctx, keys[i], targetCellCGI)
