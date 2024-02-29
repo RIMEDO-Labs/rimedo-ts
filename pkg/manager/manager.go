@@ -332,17 +332,17 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			if len(ascii) > 16 {
 				ascii = ascii[len(ascii)-16:]
 			}
-			log.Debug("ASCII: " + ascii)
+			// log.Debug("ASCII: " + ascii)
 			// else {
 			// 	for i := 0; i < 16-len(ascii); i++ {
 			// 		ascii = "0" + ascii
 			// 	}
 			// }
 			targetCellCGI := restApiManager.GetUtfAscii(ascii, false, true)
-			log.Debug(keys[i] + " -> " + targetCellCGI)
+			// log.Debug(keys[i] + " -> " + targetCellCGI)
 			err := restApiManager.HandoverControl(ctx, keys[i], targetCellCGI)
 			if err != nil {
-				log.Error("Something went wrong with TS HO!")
+				log.Error(err)
 			}
 		}
 
