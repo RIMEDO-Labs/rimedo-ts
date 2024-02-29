@@ -11,6 +11,7 @@ package sdran
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/controller"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/monitoring"
@@ -119,6 +120,7 @@ func (m *Manager) start(ctx context.Context) error {
 			if err != nil {
 				break
 			}
+			time.Sleep(1 * time.Second)
 		}
 	}()
 	if err != nil {
