@@ -51,11 +51,11 @@ func NewRestManager(ueStore store.Store, cellStore store.Store) *RestManager {
 		"user":  "6",
 	}
 
-	json := jsoniter.ConfigCompatibleWithStandardLibrary
+	// json := jsoniter.ConfigCompatibleWithStandardLibrary
 
 	client := resty.New().
-		SetJSONMarshaler(json.Marshal).
-		SetJSONUnmarshaler(json.Unmarshal)
+		SetJSONMarshaler(jsoniter.Marshal).
+		SetJSONUnmarshaler(jsoniter.Unmarshal)
 
 	return &RestManager{
 		url:           urlString,
@@ -344,7 +344,7 @@ func (m *RestManager) UpdateData() error {
 		return err
 	}
 	log.Debug("Passed cell data requesting")
-	log.Debug(cellResponse)
+	// log.Debug(cellResponse)
 	var cellData *ViaviCell
 	if err := m.client.JSONUnmarshal(cellResponse.Body(), &cellData); err != nil {
 		err = errors.New("ERROR: " + fmt.Sprint(err))

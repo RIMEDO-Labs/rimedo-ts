@@ -119,7 +119,7 @@ func (m *Manager) start(ctx context.Context) error {
 			err = m.restApiManager.Run(ctx)
 			log.Debug("We are here")
 			if err != nil {
-				// break
+				break
 			}
 			time.Sleep(1 * time.Second)
 		}
