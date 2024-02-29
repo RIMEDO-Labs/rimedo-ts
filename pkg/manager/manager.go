@@ -336,6 +336,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 				}
 			}
 			targetCellCGI := restApiManager.GetUtfAscii(ascii, false, true)
+			log.Debug(keys[i] + " -> " + targetCellCGI)
 			err := restApiManager.HandoverControl(ctx, keys[i], targetCellCGI)
 			if err != nil {
 				log.Error("Something went wrong with TS HO!")
