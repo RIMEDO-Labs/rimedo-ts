@@ -117,7 +117,7 @@ func (m *Manager) start(ctx context.Context) error {
 	go func() {
 		for {
 			err = m.restApiManager.Run(ctx)
-			log.Debug("We are here")
+			// log.Debug("We are here")
 			if err != nil {
 				break
 			}
