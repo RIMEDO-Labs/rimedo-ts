@@ -873,7 +873,7 @@ func (m *RestManager) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Debug("DATA UPDATED!")
+	// log.Debug("DATA UPDATED!")
 	return nil
 
 }
