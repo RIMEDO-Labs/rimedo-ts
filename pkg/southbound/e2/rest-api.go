@@ -51,11 +51,11 @@ func NewRestManager(ueStore store.Store, cellStore store.Store) *RestManager {
 		"user":  "6",
 	}
 
-	// json := jsoniter.ConfigCompatibleWithStandardLibrary
+	json := jsoniter.ConfigCompatibleWithStandardLibrary
 
 	client := resty.New().
-		SetJSONMarshaler(jsoniter.Marshal).
-		SetJSONUnmarshaler(jsoniter.Unmarshal)
+		SetJSONMarshaler(json.Marshal).
+		SetJSONUnmarshaler(json.Unmarshal)
 
 	return &RestManager{
 		url:           urlString,

@@ -10,8 +10,8 @@ type ViaviUE struct {
 			Tags struct {
 				ViaviUEName string `json:"Viavi.UE.Name"`
 			} `json:"tags"`
-			Columns []string   `json:"columns"`
-			Values  [][]string `json:"values"`
+			Columns []string `json:"columns"`
+			Values  [][]any  `json:"values"`
 		} `json:"series"`
 	} `json:"results"`
 }
@@ -24,8 +24,8 @@ type ViaviCell struct {
 			Tags struct {
 				ViaviCellName string `json:"Viavi.Cell.Name"`
 			} `json:"tags"`
-			Columns []string   `json:"columns"`
-			Values  [][]string `json:"values"`
+			Columns []string `json:"columns"`
+			Values  [][]any  `json:"values"`
 		} `json:"series"`
 	} `json:"results"`
 }
