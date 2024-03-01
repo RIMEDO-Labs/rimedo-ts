@@ -186,17 +186,19 @@ func (m *RestManager) TranslateUtfAscii(id string, cell bool) string {
 		counter++
 	}
 
+	limit := 16
+	if cell {
+		limit = 17
+	}
 	var ascii string
 	for _, character := range tab {
 		ascii = ascii + fmt.Sprint(character)
 	}
-	if len(ascii) > 16 {
-		ascii = ascii[len(ascii)-16:]
+	if len(ascii) > limit {
+		ascii = ascii[len(ascii)-limit:]
 	} else {
-		if !cell {
-			for i := 0; i < 16-len(ascii); i++ {
-				ascii = "0" + ascii
-			}
+		for i := 0; i < limit-len(ascii); i++ {
+			ascii = "0" + ascii
 		}
 	}
 
@@ -439,7 +441,7 @@ func (m *RestManager) PrintUes(ctx context.Context, print bool) error {
 
 func (m *RestManager) CreateUe(ctx context.Context, id string, cgi string, rrcState string, fiveQi string, slice string, rsrpTab map[string]string) (*UeData, error) {
 
-	asciiId := m.TranslateUtfAscii(id, false)
+	asciiId := m.TranslateUtfAscii(strings.ReplaceAll(id, "/", ""), false)
 	m.SaveUtfAscii(id, asciiId, false)
 
 	ueData := &UeData{
@@ -839,7 +841,7 @@ func (m *RestManager) HandoverControl(ctx context.Context, ueId string, cgi stri
 			_, err = m.RequestData(false, byteReader, "")
 			if err == nil {
 				m.hoActionId++
-				log.Info("E2 Control Message: UE (ID: %s) has been switched to another Cell (CGI_1: %s -> CGI_2: %s)", ueId, ueData.Cgi, cgi)
+				log.Infof("E2 Control Message: UE (ID: %s) has been switched to another Cell (CGI_1: %s -> CGI_2: %s)", ueId, ueData.Cgi, cgi)
 				log.Info("")
 				log.Info("")
 			} else {

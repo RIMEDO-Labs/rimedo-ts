@@ -85,7 +85,7 @@ func (m *Manager) start() error {
 
 	policyChange := make(chan bool)
 
-	restApiManager := m.sdranManager.GetRestApiManager()
+	// restApiManager := m.sdranManager.GetRestApiManager()
 
 	m.sdranManager.AddService(a1.NewA1EIService())
 	m.sdranManager.AddService(a1.NewA1PService(&policyMap, policyChange))
@@ -129,11 +129,11 @@ func (m *Manager) start() error {
 				prepare = false
 			}
 			m.checkPolicies(ctx, flag, show, prepare)
-			err := restApiManager.PrintUes(ctx, show)
+			err := m.sdranManager.PrintUes(ctx, show)
 			if err != nil {
 				log.Error("Something went wrong with printing UEs")
 			}
-			err = restApiManager.PrintCells(ctx, show)
+			err = m.sdranManager.PrintCells(ctx, show)
 			if err != nil {
 				log.Error("Something went wrong with printing UEs")
 			}
@@ -169,14 +169,15 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 					info = info + ", "
 				}
 				ue := *policyObject.API.Scope.UeID
-				new_ue := ue
-				for i := 0; i < len(ue); i++ {
-					if ue[i:i+1] == "0" {
-						new_ue = ue[i+1:]
-					} else {
-						break
-					}
-				}
+				// new_ue := ue
+				// for i := 0; i < len(ue); i++ {
+				// 	if ue[i:i+1] == "0" {
+				// 		new_ue = ue[i+1:]
+				// 	} else {
+				// 		break
+				// 	}
+				// }
+				new_ue := m.sdranManager.GetUtfAscii(ue, false, false)
 				info = info + fmt.Sprintf("UE [ID:%v]", new_ue)
 				previous = true
 			}
@@ -210,8 +211,11 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 				info = info + fmt.Sprintf(" - (%v) -", policyObject.API.TSPResources[i].Preference)
 				for j := range policyObject.API.TSPResources[i].CellIDList {
 					nci := *policyObject.API.TSPResources[i].CellIDList[j].CID.NcI
-					plmnId, _ := monitoring.GetPlmnIdFromMccMnc(policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc, policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc, false)
-					cgi := m.PlmnIDNciToTopoCGI(plmnId, uint64(nci))
+					// plmnId, _ := monitoring.GetPlmnIdFromMccMnc(policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc, policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc, false)
+					mcc := policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc
+					mnc := policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc
+					// cgi := m.PlmnIDNciToTopoCGI(plmnId, uint64(nci))
+					cgi := m.sdranManager.GetUtfAscii(mnc+fmt.Sprint(nci)+mcc, false, true)
 					info = info + fmt.Sprintf(" CELL [CGI:%v],", cgi)
 				}
 				info = info[0 : len(info)-1]
@@ -229,7 +233,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 
 func (m *Manager) deployPolicies(ctx context.Context) {
 	policyManager := m.sdranManager.GetPolicyManager()
-	restApiManager := m.sdranManager.GetRestApiManager()
+	// restApiManager := m.sdranManager.GetRestApiManager()
 	ues := m.sdranManager.GetUes()
 	keys := make([]string, 0, len(ues))
 	for k := range ues {
@@ -244,7 +248,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 		if err != nil {
 			log.Error("Something went wrong!")
 		}
-		sst, err := strconv.ParseInt(restApiManager.GetSstSlice(ues[keys[i]].Slice, false), 10, 64)
+		sst, err := strconv.ParseInt(m.sdranManager.GetSstSlice(ues[keys[i]].Slice, false), 10, 64)
 		if err != nil {
 			log.Error("Something went wrong!")
 		}
@@ -275,24 +279,33 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			inside = true
 			cgi := cgiKeys[j]
 			// nci, plmnId := monitoring.PlmnIDNciFromCGI(cgi)
-			tab := make([]string, 0)
-			var temp string
-			for s := 0; s < len(cgi); s++ {
-				// log.Debug(character)
-				if cgi[s:s+1] != "/" {
-					temp = temp + cgi[s:s+1]
-				} else {
-					tab = append(tab, temp)
-					temp = ""
-				}
-			}
-			tab = append(tab, temp)
-			nci, err := strconv.ParseInt(restApiManager.TranslateUtfAscii(tab[1], true), 10, 64)
+			// tab := make([]string, 0)
+			// var temp string
+			// for s := 0; s < len(cgi); s++ {
+			// 	// log.Debug(character)
+			// 	if cgi[s:s+1] != "/" {
+			// 		temp = temp + cgi[s:s+1]
+			// 	} else {
+			// 		tab = append(tab, temp)
+			// 		temp = ""
+			// 	}
+			// }
+			// tab = append(tab, temp)
+			// temp := strings.ReplaceAll(cgi, "/", "")
+			// temp = restApiManager.TranslateUtfAscii(temp, true)
+			temp := m.sdranManager.GetUtfAscii(cgi, true, true)
+			mcc := temp[14:17]
+			mnc := temp[0:3]
+			nci, err := strconv.ParseInt(temp[3:14], 10, 64)
 			if err != nil {
 				log.Error("Something went wrong!")
 			}
-			mcc := restApiManager.TranslateUtfAscii(tab[2], true)
-			mnc := restApiManager.TranslateUtfAscii(tab[0], true)
+			// nci, err := strconv.ParseInt(restApiManager.TranslateUtfAscii(tab[1], true), 10, 64)
+			// if err != nil {
+			// 	log.Error("Something went wrong!")
+			// }
+			// mcc := restApiManager.TranslateUtfAscii(tab[2], true)
+			// mnc := restApiManager.TranslateUtfAscii(tab[0], true)
 			// mcc, mnc := monitoring.GetMccMncFromPlmnID(plmnId, false)
 			cellID := policyAPI.CellID{
 				CID: policyAPI.CID{
@@ -327,20 +340,22 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// 		log.Error(err)
 			// 	}
 			// }
-			ascii := tsResult.PlmnID.Mnc + "47" + fmt.Sprint(*tsResult.CID.NcI) + "47" + tsResult.PlmnID.Mcc
+			ascii := tsResult.PlmnID.Mnc + fmt.Sprint(*tsResult.CID.NcI) + tsResult.PlmnID.Mcc
 
-			if len(ascii) > 16 {
-				ascii = ascii[len(ascii)-16:]
-			}
+			// ascii := tsResult.PlmnID.Mnc + "47" + fmt.Sprint(*tsResult.CID.NcI) + "47" + tsResult.PlmnID.Mcc
+
+			// if len(ascii) > 16 {
+			// 	ascii = ascii[len(ascii)-16:]
+			// }
 			// log.Debug("ASCII: " + ascii)
 			// else {
 			// 	for i := 0; i < 16-len(ascii); i++ {
 			// 		ascii = "0" + ascii
 			// 	}
 			// }
-			targetCellCGI := restApiManager.GetUtfAscii(ascii, false, true)
+			targetCellCGI := m.sdranManager.GetUtfAscii(ascii, false, true)
 			// log.Debug(keys[i] + " -> " + targetCellCGI)
-			_ = restApiManager.HandoverControl(ctx, keys[i], targetCellCGI)
+			_ = m.sdranManager.HandoverControl(ctx, keys[i], targetCellCGI)
 			// if err != nil {
 			// 	log.Warn(err)
 			// }

@@ -18,6 +18,7 @@ import (
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/policy"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/rnib"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/southbound/e2"
+	"github.com/go-resty/resty/v2"
 	policyAPI "github.com/onosproject/onos-a1-dm/go/policy_schemas/traffic_steering_preference/v2"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/onos-lib-go/pkg/logging/service"
@@ -213,9 +214,27 @@ func (m *Manager) SetCell(ctx context.Context, cell *e2.CellData) error {
 
 }
 
+func (m *Manager) PrintCells(ctx context.Context, print bool) error {
+
+	return m.restApiManager.PrintCells(ctx, print)
+
+}
+
 func (m *Manager) AttachUe(ctx context.Context, ue *e2.UeData, cgi string) error {
 
 	return m.restApiManager.AttachUe(ctx, ue, cgi)
+
+}
+
+func (m *Manager) DetachUe(ctx context.Context, ue *e2.UeData, cgi string) {
+
+	m.restApiManager.DetachUe(ctx, ue)
+
+}
+
+func (m *Manager) MakeUeIdle(ctx context.Context, ue *e2.UeData) error {
+
+	return m.restApiManager.MakeUeIdle(ctx, ue)
 
 }
 
@@ -228,6 +247,12 @@ func (m *Manager) GetUe(ctx context.Context, ueID string) (*e2.UeData, error) {
 func (m *Manager) SetUe(ctx context.Context, ueData *e2.UeData) error {
 
 	return m.restApiManager.SetUe(ctx, ueData)
+
+}
+
+func (m *Manager) PrintUes(ctx context.Context, print bool) error {
+
+	return m.restApiManager.PrintUes(ctx, print)
 
 }
 
@@ -270,6 +295,78 @@ func (m *Manager) GetRestApiManager() *e2.RestManager {
 func (m *Manager) GetPolicyManager() *policy.PolicyManager {
 
 	return m.policyManager
+
+}
+
+func (m *Manager) DashMarks(s string, cell bool) string {
+
+	return m.restApiManager.DashMarks(s, cell)
+
+}
+
+func (m *Manager) TranslateUtfAscii(id string, cell bool) string {
+
+	return m.restApiManager.TranslateUtfAscii(id, cell)
+
+}
+
+func (m *Manager) GetUtfAscii(id string, ascii bool, cell bool) string {
+
+	return m.restApiManager.GetUtfAscii(id, ascii, cell)
+
+}
+
+func (m *Manager) SaveUtfAscii(utf string, ascii string, cell bool) {
+
+	m.restApiManager.SaveUtfAscii(utf, ascii, cell)
+
+}
+
+func (m *Manager) GetSstSlice(id string, sst bool) string {
+
+	return m.restApiManager.GetSstSlice(id, sst)
+
+}
+
+func (m *Manager) RequestData(test bool, json interface{}, params string) (*resty.Response, error) {
+
+	return m.restApiManager.RequestData(test, json, params)
+
+}
+
+func (m *Manager) GetLastTest() (string, error) {
+
+	return m.restApiManager.GetLastTest()
+
+}
+
+func (m *Manager) GetUeInfo(ctx context.Context) error {
+
+	return m.restApiManager.GetUeInfo(ctx)
+
+}
+
+func (m *Manager) CreateCellObjects(ctx context.Context) error {
+
+	return m.restApiManager.CreateCellObjects(ctx)
+
+}
+
+func (m *Manager) UpdateData() error {
+
+	return m.restApiManager.UpdateData()
+
+}
+
+func (m *Manager) HandoverControl(ctx context.Context, ueId string, cgi string) error {
+
+	return m.restApiManager.HandoverControl(ctx, ueId, cgi)
+
+}
+
+func (m *Manager) RunRestApiManager(ctx context.Context) error {
+
+	return m.restApiManager.Run(ctx)
 
 }
 
