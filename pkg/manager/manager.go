@@ -398,14 +398,15 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag 
 					info = info + ", "
 				}
 				ue := *policyObject.API.Scope.UeID
-				new_ue := ue
-				for i := 0; i < len(ue); i++ {
-					if ue[i:i+1] == "0" {
-						new_ue = ue[i+1:]
-					} else {
-						break
-					}
-				}
+				// new_ue := ue
+				// for i := 0; i < len(ue); i++ {
+				// 	if ue[i:i+1] == "0" {
+				// 		new_ue = ue[i+1:]
+				// 	} else {
+				// 		break
+				// 	}
+				// }
+				new_ue := m.sdranManager.GetUtfAscii(ue, false, false)
 				info = info + fmt.Sprintf("UE [ID:%v]", new_ue)
 				previous = true
 			}
