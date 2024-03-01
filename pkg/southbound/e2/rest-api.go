@@ -12,7 +12,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	resty "github.com/go-resty/resty/v2"
 	jsoniter "github.com/json-iterator/go"
@@ -179,28 +178,96 @@ func (m *RestManager) DashMarks(s string, cell bool) string {
 
 func (m *RestManager) TranslateUtfAscii(id string, cell bool) string {
 
-	tab := make([]byte, utf8.RuneCountInString(id))
-	counter := 0
-	for _, character := range id {
-		tab[counter] = byte(character)
-		counter++
+	utfTab := make([]string, 0)
+	asciiTab := make([]string, 0)
+	var utf string
+	var ascii string
+	for s := 0; s < len(id); s++ {
+		// log.Debug(character)
+		if !cell || (cell && id[s:s+1] != "/") {
+			utf = utf + id[s:s+1]
+		} else {
+			utfTab = append(utfTab, utf)
+			utf = ""
+		}
+	}
+	utfTab = append(utfTab, utf)
+	utf = ""
+
+	// counter := 0
+	for _, item := range utfTab {
+		for _, character := range item {
+			ascii = ascii + fmt.Sprint(byte(character))
+		}
+		asciiTab = append(asciiTab, ascii)
+		// counter = counter + len(ascii)
+		ascii = ""
+	}
+
+	for _, s := range asciiTab {
+		ascii = ascii + s
 	}
 
 	limit := 16
 	if cell {
 		limit = 17
 	}
-	var ascii string
-	for _, character := range tab {
-		ascii = ascii + fmt.Sprint(character)
-	}
 	if len(ascii) > limit {
-		ascii = ascii[len(ascii)-limit:]
+		if !cell {
+			ascii = ascii[len(ascii)-limit:]
+		} else {
+			temp1 := ascii[:3]
+			temp2 := ascii[len(ascii)-3:]
+			temp3 := ascii[3 : len(ascii)-3]
+
+			counter := 1
+			for len(temp3) != limit-len(temp1)-len(temp2) {
+				if counter%2 != 0 {
+					temp3 = temp3[1:]
+				} else {
+					temp3 = temp3[:len(temp3)-1]
+				}
+				counter++
+			}
+
+			ascii = temp1 + temp3 + temp2
+		}
 	} else {
-		for i := 0; i < limit-len(ascii); i++ {
-			ascii = "0" + ascii
+		if !cell {
+			for i := 0; i < limit-len(ascii); i++ {
+				ascii = "0" + ascii
+			}
 		}
 	}
+
+	// tab := make([]byte, utf8.RuneCountInString(id))
+	// counter := 0
+	// for _, character := range id {
+	// 	tab[counter] = byte(character)
+	// 	counter++
+	// }
+
+	// limit := 16
+	// if cell {
+	// 	limit = 17
+	// }
+	// // var ascii string
+	// for _, character := range tab {
+	// 	ascii = ascii + fmt.Sprint(character)
+	// }
+	// if len(ascii) > limit {
+	// 	if !cell {
+	// 		ascii = ascii[len(ascii)-limit:]
+	// 	} else {
+	// 		ascii = ascii
+	// 	}
+	// } else {
+	// 	if !cell {
+	// 		for i := 0; i < limit-len(ascii); i++ {
+	// 			ascii = "0" + ascii
+	// 		}
+	// 	}
+	// }
 
 	return ascii
 
@@ -441,7 +508,7 @@ func (m *RestManager) PrintUes(ctx context.Context, print bool) error {
 
 func (m *RestManager) CreateUe(ctx context.Context, id string, cgi string, rrcState string, fiveQi string, slice string, rsrpTab map[string]string) (*UeData, error) {
 
-	asciiId := m.TranslateUtfAscii(strings.ReplaceAll(id, "/", ""), false)
+	asciiId := m.TranslateUtfAscii(id, false)
 	m.SaveUtfAscii(id, asciiId, false)
 
 	ueData := &UeData{
