@@ -294,6 +294,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// temp := strings.ReplaceAll(cgi, "/", "")
 			// temp = restApiManager.TranslateUtfAscii(temp, true)
 			temp := m.sdranManager.GetUtfAscii(cgi, true, true)
+			log.Debug("CGI: " + cgi + ", TEMP: " + temp)
 			mcc := temp[len(temp)-3:]
 			mnc := temp[:3]
 			nci, err := strconv.ParseInt(temp[3:len(temp)-3], 10, 64)
