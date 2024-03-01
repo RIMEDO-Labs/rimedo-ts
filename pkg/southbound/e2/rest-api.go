@@ -234,7 +234,7 @@ func (m *RestManager) TranslateUtfAscii(id string, cell bool) string {
 		}
 	} else {
 		if !cell {
-			for i := 0; i < limit-len(ascii); i++ {
+			for len(ascii) != limit {
 				ascii = "0" + ascii
 			}
 		}
@@ -297,10 +297,10 @@ func (m *RestManager) GetUtfAscii(id string, ascii bool, cell bool) string {
 	} else {
 		output = m.ueAsciiUtf[id]
 	}
-	log.Debug("Utf Cell: " + fmt.Sprint(m.cellUtfAscii))
-	log.Debug("Utf UE: " + fmt.Sprint(m.cellAsciiUtf))
-	log.Debug("Ascii Cell: " + fmt.Sprint(m.ueUtfAscii))
-	log.Debug("Ascii UE: " + fmt.Sprint(m.ueAsciiUtf))
+	// log.Debug("Utf Cell: " + fmt.Sprint(m.cellUtfAscii))
+	// log.Debug("Utf UE: " + fmt.Sprint(m.cellAsciiUtf))
+	// log.Debug("Ascii Cell: " + fmt.Sprint(m.ueUtfAscii))
+	// log.Debug("Ascii UE: " + fmt.Sprint(m.ueAsciiUtf))
 	return output
 
 }
