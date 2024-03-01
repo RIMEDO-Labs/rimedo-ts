@@ -18,7 +18,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/RIMEDO-Labs/rimedo-ts/pkg/monitoring"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/northbound/a1"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/sdran"
 	policyAPI "github.com/onosproject/onos-a1-dm/go/policy_schemas/traffic_steering_preference/v2"
@@ -440,8 +439,11 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag 
 				info = info + fmt.Sprintf(" - (%v) -", policyObject.API.TSPResources[i].Preference)
 				for j := range policyObject.API.TSPResources[i].CellIDList {
 					nci := *policyObject.API.TSPResources[i].CellIDList[j].CID.NcI
-					plmnId, _ := monitoring.GetPlmnIdFromMccMnc(policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc, policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc, false)
-					cgi := m.PlmnIDNciToTopoCGI(plmnId, uint64(nci))
+					// plmnId, _ := monitoring.GetPlmnIdFromMccMnc(policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc, policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc, false)
+					mcc := policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc
+					mnc := policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc
+					cgi := m.sdranManager.GetUtfAscii(mnc+fmt.Sprint(nci)+mcc, false, true)
+					// cgi := m.PlmnIDNciToTopoCGI(plmnId, uint64(nci))
 					info = info + fmt.Sprintf(" CELL [CGI:%v],", cgi)
 				}
 				info = info[0 : len(info)-1]
