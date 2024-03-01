@@ -252,6 +252,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			log.Error("Something went wrong!")
 		}
 		sd := "456DEF"
+		asciiUeId := m.sdranManager.GetUtfAscii(keys[i], true, false)
 		scopeUe := policyAPI.Scope{
 
 			SliceID: &policyAPI.SliceID{
@@ -262,7 +263,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 					Mnc: "426", // "628",
 				},
 			},
-			UeID: &keys[i],
+			UeID: &asciiUeId,
 			QosID: &policyAPI.QosID{
 				The5QI: &fiveQi,
 			},
