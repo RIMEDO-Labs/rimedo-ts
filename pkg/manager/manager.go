@@ -294,7 +294,18 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// temp := strings.ReplaceAll(cgi, "/", "")
 			// temp = restApiManager.TranslateUtfAscii(temp, true)
 			temp := m.sdranManager.GetUtfAscii(cgi, true, true)
-			log.Debug("CGI: " + cgi + ", TEMP: " + temp)
+			// log.Debug("CGI: " + cgi + ", TEMP: " + temp)
+			cellData, err := m.sdranManager.GetCell(ctx, cgi)
+			if err != nil {
+				log.Error(err)
+			} else if cellData == nil {
+				cellData, err = m.sdranManager.CreateCell(ctx, cgi)
+				if err != nil {
+					log.Error()
+				}
+			} else if temp == "" {
+				log.Error("Error with mapping!")
+			}
 			mcc := temp[len(temp)-3:]
 			mnc := temp[:3]
 			nci, err := strconv.ParseInt(temp[3:len(temp)-3], 10, 64)

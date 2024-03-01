@@ -214,6 +214,12 @@ func (m *Manager) SetCell(ctx context.Context, cell *e2.CellData) error {
 
 }
 
+func (m *Manager) CreateCell(ctx context.Context, cgi string) (*e2.CellData, error) {
+
+	return m.restApiManager.CreateCell(ctx, cgi)
+
+}
+
 func (m *Manager) PrintCells(ctx context.Context, print bool) error {
 
 	return m.restApiManager.PrintCells(ctx, print)
