@@ -370,6 +370,12 @@ func (m *Manager) RunRestApiManager(ctx context.Context) error {
 
 }
 
+func (m *Manager) IfObjectsCreated() bool {
+
+	return m.restApiManager.IfObjectsCreated()
+
+}
+
 // func (m *Manager) SwitchUeBetweenCells(ctx context.Context, ueID string, targetCellCGI string) error {
 
 // 	m.mutex.Lock()

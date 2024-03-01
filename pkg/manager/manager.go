@@ -345,7 +345,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// ascii := tsResult.PlmnID.Mnc + "47" + fmt.Sprint(*tsResult.CID.NcI) + "47" + tsResult.PlmnID.Mcc
 
 			// if len(ascii) > 16 {
-			// 	ascii = ascii[len(ascii)-16:]
+			// 	ascii = ascii[len(ascii)-16:]2mrkh
 			// }
 			// log.Debug("ASCII: " + ascii)
 			// else {
@@ -468,7 +468,9 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag 
 			log.Debug("")
 		}
 	}
-	m.deployPolicies(ctx)
+	if flag := m.sdranManager.IfObjectsCreated(); flag {
+		m.deployPolicies(ctx)
+	}
 }
 
 func (m *Manager) changeCellsTypes(ctx context.Context) {

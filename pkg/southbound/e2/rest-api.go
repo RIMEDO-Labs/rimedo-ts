@@ -176,6 +176,12 @@ func (m *RestManager) DashMarks(s string, cell bool) string {
 	return output
 }
 
+func (m *RestManager) IfObjectsCreated() bool {
+
+	return len(m.ueObjects) != 0 && len(m.cellObjects) != 0
+
+}
+
 func (m *RestManager) TranslateUtfAscii(id string, cell bool) string {
 
 	utfTab := make([]string, 0)
