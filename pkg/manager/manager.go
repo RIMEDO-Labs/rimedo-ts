@@ -293,7 +293,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// tab = append(tab, temp)
 			// temp := strings.ReplaceAll(cgi, "/", "")
 			// temp = restApiManager.TranslateUtfAscii(temp, true)
-			temp := m.sdranManager.GetUtfAscii(cgi, true, true)
+			// temp := m.sdranManager.GetUtfAscii(cgi, true, true)
 			// log.Debug("CGI: " + cgi + ", TEMP: " + temp)
 			cellData, err := m.sdranManager.GetCell(ctx, cgi)
 			if err != nil {
@@ -301,11 +301,13 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			} else if cellData == nil {
 				cellData, err = m.sdranManager.CreateCell(ctx, cgi)
 				if err != nil {
-					log.Error()
+					log.Error(err)
 				}
-			} else if temp == "" {
-				log.Error("Error with mapping!")
 			}
+			// else if temp == "" {
+			// 	log.Error("Error with mapping!")
+			// }
+			temp := m.sdranManager.GetUtfAscii(cgi, true, true)
 			mcc := temp[len(temp)-3:]
 			mnc := temp[:3]
 			nci, err := strconv.ParseInt(temp[3:len(temp)-3], 10, 64)
