@@ -167,6 +167,9 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 		}
 	}
 
+	log.Debug("POLICY MAP: " + fmt.Sprint(policyMap))
+	log.Debug("RECEIVED: " + received)
+
 	if _, ok := policyMap[received]; !ok {
 		m.sdranManager.DeletePolicy(ctx, received)
 		log.Infof("POLICY MESSAGE: Policy [ID:%v] deleted\n", received)
