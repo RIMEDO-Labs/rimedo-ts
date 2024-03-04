@@ -68,17 +68,15 @@ type Manager struct {
 
 func (m *Manager) Run() {
 
-	errChan := make(chan error)
+	// errChan := make(chan error)
 
-	_ = m.start(errChan)
-
-	go func() {
-		for err := range errChan {
-			if err != nil {
-				log.Fatal("Unable to run Manager", err)
-			}
-		}
-	}()
+	// go func() {
+	// 	for err := range errChan {
+	if err := m.start(); err != nil {
+		log.Fatal("Unable to run Manager", err)
+	}
+	// 	}
+	// }()
 
 }
 
@@ -86,7 +84,7 @@ func (m *Manager) Close() {
 	m.a1Manager.Close(context.Background())
 }
 
-func (m *Manager) start(errChan chan error) error {
+func (m *Manager) start() error {
 
 	ctx := context.Background()
 
@@ -122,7 +120,7 @@ func (m *Manager) start(errChan chan error) error {
 			// log.Debug("")
 			if err := m.updatePolicies(ctx, policyMap, lastReceived, &enforcmentArray, &flag); err != nil {
 				log.Warn("Some problems occured when updating Policy store!")
-				errChan <- err
+				// errChan <- err
 			}
 			log.Debug(m.sdranManager.DashMarks(""))
 			log.Debug("")
@@ -131,36 +129,36 @@ func (m *Manager) start(errChan chan error) error {
 
 	}()
 
-	// go func() {
-	for {
-		time.Sleep(1 * time.Second)
-		counter++
-		if counter == delay {
-			compareLengths()
-			counter = 0
-			show = true
-		} else if counter == delay-1 {
-			prepare = true
-		} else {
-			show = false
-			prepare = false
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			counter++
+			if counter == delay {
+				compareLengths()
+				counter = 0
+				show = true
+			} else if counter == delay-1 {
+				prepare = true
+			} else {
+				show = false
+				prepare = false
+			}
+			m.checkPolicies(ctx, &flag, show, prepare)
+			err := m.sdranManager.PrintUes(ctx, show)
+			if err != nil {
+				log.Error("Something went wrong with printing UEs")
+				// errChan <- err
+			}
+			err = m.sdranManager.PrintCells(ctx, show)
+			if err != nil {
+				log.Error("Something went wrong with printing UEs")
+				// errChan <- err
+			}
+			// flag = false
 		}
-		m.checkPolicies(ctx, &flag, show, prepare)
-		err := m.sdranManager.PrintUes(ctx, show)
-		if err != nil {
-			log.Error("Something went wrong with printing UEs")
-			errChan <- err
-		}
-		err = m.sdranManager.PrintCells(ctx, show)
-		if err != nil {
-			log.Error("Something went wrong with printing UEs")
-			errChan <- err
-		}
-		// flag = false
-	}
-	// }()
+	}()
 
-	// return nil
+	return nil
 }
 
 func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byte, received string, enfArray *[]string, defaultFlag *bool) error {
