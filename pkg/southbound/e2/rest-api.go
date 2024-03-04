@@ -75,10 +75,12 @@ func NewRestManager(ueStore store.Store, cellStore store.Store) *RestManager {
 		ueObjects:     make(map[string]*UeData),
 		cellStore:     cellStore,
 		ueStore:       ueStore,
-		cellLen:       0,
-		ueLen:         0,
-		hoActionId:    1,
-		client:        client,
+		// cellLen:       0,
+		// ueLen:         0,
+		// policyLen:     0,
+		logLength:  0,
+		hoActionId: 1,
+		client:     client,
 	}
 }
 
@@ -101,35 +103,39 @@ type RestManager struct {
 	ueObjects     map[string]*UeData
 	cellStore     store.Store
 	ueStore       store.Store
-	cellLen       int
-	ueLen         int
-	hoActionId    int
-	client        *resty.Client
+	// cellLen       int
+	// ueLen         int
+	// policyLen     int
+	logLength  int
+	hoActionId int
+	client     *resty.Client
 }
 
-func (m *RestManager) DashMarks(s string, cell bool) string {
+// func (m *RestManager) Set
+func (m *RestManager) DashMarks(s string) string { //additional input: cell bool
 	length := 20
 	if s != "" {
-		if cell {
-			if m.cellLen != 0 {
-				length = int(math.Abs(float64(m.cellLen) - float64(len(s)) - 2.0))
-			}
-		} else {
-			if m.ueLen != 0 {
-				length = int(math.Abs(float64(m.ueLen) - float64(len(s)) - 2.0))
-			}
-		}
-
+		// if cell {
+		// 	if m.cellLen != 0 {
+		// 		length = int(math.Abs(float64(m.cellLen) - float64(len(s)) - 2.0))
+		// 	}
+		// } else {
+		// 	if m.ueLen != 0 {
+		// 		length = int(math.Abs(float64(m.ueLen) - float64(len(s)) - 2.0))
+		// 	}
+		// }
+		length = int(math.Abs(float64(m.logLength) - float64(len(s)) - 2.0))
 	} else {
-		if cell {
-			if m.cellLen != 0 {
-				length = int(math.Abs(float64(m.cellLen)))
-			}
-		} else {
-			if m.ueLen != 0 {
-				length = int(math.Abs(float64(m.ueLen)))
-			}
-		}
+		// if cell {
+		// 	if m.cellLen != 0 {
+		// 		length = int(math.Abs(float64(m.cellLen)))
+		// 	}
+		// } else {
+		// 	if m.ueLen != 0 {
+		// 		length = int(math.Abs(float64(m.ueLen)))
+		// 	}
+		// }
+		length = int(math.Abs(float64(m.logLength)))
 	}
 	half := int(math.Ceil(float64(length) / 2.0))
 	output := s
@@ -140,12 +146,12 @@ func (m *RestManager) DashMarks(s string, cell bool) string {
 		output = "-" + output + "-"
 	}
 
-	var printLen int
-	if cell {
-		printLen = m.cellLen
-	} else {
-		printLen = m.ueLen
-	}
+	printLen := m.logLength
+	// if cell {
+	// 	printLen = m.cellLen
+	// } else {
+	// 	printLen = m.ueLen
+	// }
 
 	counter := 1
 	if printLen == 0 {
@@ -472,7 +478,7 @@ func (m *RestManager) UpdateData() error {
 func (m *RestManager) PrintUes(ctx context.Context, print bool) error {
 
 	if print {
-		log.Debug(m.DashMarks("UEs", false))
+		log.Debug(m.DashMarks("UEs"))
 	}
 
 	values := make([]string, 0, len(m.ueList))
@@ -490,6 +496,7 @@ func (m *RestManager) PrintUes(ctx context.Context, print bool) error {
 		}
 	}
 
+	tempLen := 0
 	for _, k := range keys {
 		if ueData, err := m.GetUe(ctx, m.ueList[k]); ueData != nil {
 			output := fmt.Sprintf(" ID: %s, CGI: %s, RRC: %s, SLICE: %s, 5QI: %s, RSRP:[", ueData.Id, ueData.Cgi, ueData.RrcState, ueData.Slice, ueData.FiveQi)
@@ -512,16 +519,23 @@ func (m *RestManager) PrintUes(ctx context.Context, print bool) error {
 				log.Debug(output)
 			}
 
-			if m.ueLen < len(output) {
-				m.ueLen = len(output)
+			// if m.ueLen < len(output) {
+			// 	m.ueLen = len(output)
+			// }
+			// if m.logLength < len(output) {
+			// 	m.logLength = len(output)
+			// }
+			if tempLen < len(output) {
+				tempLen = len(output)
 			}
 		} else if err != nil {
 			return err
 		}
 	}
+	m.logLength = tempLen
 
 	if print {
-		log.Debug(m.DashMarks("", false))
+		log.Debug(m.DashMarks(""))
 		log.Debug("")
 	}
 
@@ -652,7 +666,7 @@ func (m *RestManager) GetUes() map[string]*UeData {
 func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 
 	if print {
-		log.Debug(m.DashMarks("Cells", true))
+		log.Debug(m.DashMarks("Cells"))
 	}
 
 	values := make([]string, 0, len(m.cellList))
@@ -684,6 +698,12 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 				if flag {
 					suboutput = suboutput + ", "
 				}
+				if len(output+suboutput) > m.logLength-3 {
+					log.Debug(output + suboutput)
+					output = ""
+					suboutput = ""
+					flag = false
+				}
 				suboutput = suboutput + fmt.Sprint(cellData.UeTab[v])
 				flag = true
 			}
@@ -692,16 +712,16 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 				log.Debug(output)
 			}
 
-			if m.cellLen < len(output) {
-				m.cellLen = len(output)
-			}
+			// if m.cellLen < len(output) {
+			// 	m.cellLen = len(output)
+			// }
 		} else if err != nil {
 			return err
 		}
 	}
 
 	if print {
-		log.Debug(m.DashMarks("", true))
+		log.Debug(m.DashMarks(""))
 		log.Debug("")
 	}
 

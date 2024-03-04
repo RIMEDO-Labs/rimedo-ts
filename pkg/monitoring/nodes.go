@@ -196,6 +196,14 @@ func (c *NodeManager) CreatePolicy(ctx context.Context, key string, policy *poli
 	if len(key) == 0 {
 		panic("bad data")
 	}
+
+	for k, item := range c.policies {
+		if item.IsEnforced {
+			item.IsEnforced = false
+			c.SetPolicy(ctx, k, item)
+		}
+	}
+
 	policyData := &PolicyData{
 		Key:        key,
 		API:        policy,

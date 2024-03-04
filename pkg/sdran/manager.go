@@ -304,9 +304,9 @@ func (m *Manager) GetPolicyManager() *policy.PolicyManager {
 
 }
 
-func (m *Manager) DashMarks(s string, cell bool) string {
+func (m *Manager) DashMarks(s string) string {
 
-	return m.restApiManager.DashMarks(s, cell)
+	return m.restApiManager.DashMarks(s)
 
 }
 

@@ -97,11 +97,13 @@ func (m *Manager) start() error {
 	go func() {
 		for range policyChange {
 			log.Debug("")
-			drawWithLine("POLICY STORE CHANGED!", logLength)
+			// drawWithLine("POLICY STORE CHANGED!", logLength)
+			log.Debug(m.sdranManager.DashMarks("POLICY STORE CHANGED!"))
 			log.Debug("")
 			if err := m.updatePolicies(ctx, policyMap); err != nil {
 				log.Warn("Some problems occured when updating Policy store!")
 			}
+			log.Debug(m.sdranManager.DashMarks(""))
 			log.Debug("")
 			m.checkPolicies(ctx, true, true, true)
 		}
@@ -198,15 +200,23 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 					info = info + ", "
 				}
 				info = info + "CELL ["
+				var eNci string
 				if policyObject.API.Scope.CellID.CID.NcI != nil {
 
-					info = info + fmt.Sprintf("NCI:%v, ", *policyObject.API.Scope.CellID.CID.NcI)
-				}
-				if policyObject.API.Scope.CellID.CID.EcI != nil {
+					// info = info + fmt.Sprintf("NCI:%v, ", *policyObject.API.Scope.CellID.CID.NcI)
+					eNci = fmt.Sprint(*policyObject.API.Scope.CellID.CID.NcI)
 
-					info = info + fmt.Sprintf("ECI:%v, ", *policyObject.API.Scope.CellID.CID.EcI)
+				} else if policyObject.API.Scope.CellID.CID.EcI != nil {
+
+					// info = info + fmt.Sprintf("ECI:%v, ", *policyObject.API.Scope.CellID.CID.EcI)
+					eNci = fmt.Sprint(*policyObject.API.Scope.CellID.CID.EcI)
+
 				}
-				info = info + fmt.Sprintf("PLMN:(MCC:%v, MNC:%v)]", policyObject.API.Scope.CellID.PlmnID.Mcc, policyObject.API.Scope.CellID.PlmnID.Mnc)
+				// info = info + fmt.Sprintf("PLMN:(MCC:%v, MNC:%v)]", policyObject.API.Scope.CellID.PlmnID.Mcc, policyObject.API.Scope.CellID.PlmnID.Mnc)
+				mnc := policyObject.API.Scope.CellID.PlmnID.Mnc
+				mcc := policyObject.API.Scope.CellID.PlmnID.Mcc
+				cgi := m.sdranManager.GetUtfAscii(mnc+eNci+mcc, false, true)
+				info = info + fmt.Sprintf("CGI:%v]", cgi)
 			}
 			for i := range policyObject.API.TSPResources {
 				info = info + fmt.Sprintf(" - (%v) -", policyObject.API.TSPResources[i].Preference)
@@ -404,7 +414,8 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag 
 	if prepareFlag && len(policies) != 0 {
 		if showFlag {
 			log.Debug("")
-			drawWithLine("POLICIES", logLength)
+			log.Debug(m.sdranManager.DashMarks("POLICIES!"))
+			// drawWithLine("POLICIES", logLength)
 		}
 		for _, key := range keys {
 			policyObject := policies[key]
@@ -448,15 +459,24 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag 
 					info = info + ", "
 				}
 				info = info + "CELL ["
+				var eNci string
 				if policyObject.API.Scope.CellID.CID.NcI != nil {
 
-					info = info + fmt.Sprintf("NCI:%v, ", *policyObject.API.Scope.CellID.CID.NcI)
+					// info = info + fmt.Sprintf("NCI:%v, ", *policyObject.API.Scope.CellID.CID.NcI)
+					eNci = fmt.Sprint(*policyObject.API.Scope.CellID.CID.NcI)
+
 				}
 				if policyObject.API.Scope.CellID.CID.EcI != nil {
 
-					info = info + fmt.Sprintf("ECI:%v, ", *policyObject.API.Scope.CellID.CID.EcI)
+					// info = info + fmt.Sprintf("ECI:%v, ", *policyObject.API.Scope.CellID.CID.EcI)
+					eNci = fmt.Sprint(*policyObject.API.Scope.CellID.CID.EcI)
+
 				}
-				info = info + fmt.Sprintf("PLMN:(MCC:%v, MNC:%v)]", policyObject.API.Scope.CellID.PlmnID.Mcc, policyObject.API.Scope.CellID.PlmnID.Mnc)
+				// info = info + fmt.Sprintf("PLMN:(MCC:%v, MNC:%v)]", policyObject.API.Scope.CellID.PlmnID.Mcc, policyObject.API.Scope.CellID.PlmnID.Mnc)
+				mnc := policyObject.API.Scope.CellID.PlmnID.Mnc
+				mcc := policyObject.API.Scope.CellID.PlmnID.Mcc
+				cgi := m.sdranManager.GetUtfAscii(mnc+eNci+mcc, false, true)
+				info = info + fmt.Sprintf("CGI:%v]", cgi)
 			}
 			for i := range policyObject.API.TSPResources {
 				info = info + fmt.Sprintf(" - (%v) -", policyObject.API.TSPResources[i].Preference)
@@ -486,6 +506,7 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag 
 			}
 		}
 		if showFlag {
+			log.Debug(m.sdranManager.DashMarks(""))
 			log.Debug("")
 		}
 	}
