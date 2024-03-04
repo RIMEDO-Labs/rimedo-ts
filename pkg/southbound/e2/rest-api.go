@@ -229,6 +229,13 @@ func (m *RestManager) TranslateUtfAscii(id string, cell bool) string {
 				log.Error("UTF-ASCII translation of CGI failed!")
 			}
 			temp3 := fmt.Sprint(temp3Int)
+			log.Debug("")
+			log.Debug("")
+			log.Debug("")
+			log.Debug("TEMP INT: " + temp3)
+			log.Debug("")
+			log.Debug("")
+			log.Debug("")
 			counter := 1
 			for len(temp3) != limit-len(temp1)-len(temp2) {
 				if counter%2 != 0 {
