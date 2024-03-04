@@ -478,7 +478,7 @@ func (m *RestManager) UpdateData() error {
 func (m *RestManager) PrintUes(ctx context.Context, print bool) error {
 
 	if print {
-		log.Debug(m.DashMarks("UEs"))
+		log.Debug(m.DashMarks("UES"))
 	}
 
 	values := make([]string, 0, len(m.ueList))
@@ -666,7 +666,7 @@ func (m *RestManager) GetUes() map[string]*UeData {
 func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 
 	if print {
-		log.Debug(m.DashMarks("Cells"))
+		log.Debug(m.DashMarks("CELLS"))
 	}
 
 	values := make([]string, 0, len(m.cellList))
@@ -698,7 +698,7 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 				if flag {
 					suboutput = suboutput + ", "
 				}
-				if len(output+suboutput) > m.logLength-5 {
+				if len(output+suboutput) > m.logLength-8 {
 					if print {
 						var prefix string
 						if !strings.Contains(output, " CGI") {
