@@ -189,7 +189,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 		m.sdranManager.DeletePolicy(ctx, received)
 		log.Infof("POLICY MESSAGE: Policy [ID:%v] deleted\n", received)
 		policyObject = m.sdranManager.GetPolicy(ctx, (*enfArray)[len(*enfArray)-1])
-		log.Debug("Policy Object: " + policyObject.Key)
+		log.Debug("Policy Map: " + fmt.Sprint(policyMap))
 		if policyObject != nil {
 			policyObject.IsEnforced = true
 			m.sdranManager.SetPolicy(ctx, policyObject.Key, policyObject)
