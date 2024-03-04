@@ -698,7 +698,7 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 				if flag {
 					suboutput = suboutput + ", "
 				}
-				if len(output+suboutput) > m.logLength-8 {
+				if len(output+suboutput+fmt.Sprint(cellData.UeTab[v])+", ") > m.logLength {
 					if print {
 						var prefix string
 						if !strings.Contains(output, " CGI") {
@@ -715,7 +715,7 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 				suboutput = suboutput + fmt.Sprint(cellData.UeTab[v])
 				flag = true
 			}
-			output = output + suboutput + "]"
+			output = output + suboutput + "] "
 			if print {
 				var prefix string
 				if !strings.Contains(output, " CGI") {

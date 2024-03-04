@@ -163,7 +163,8 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 			info := fmt.Sprintf("POLICY MESSAGE: Policy [ID:%v] applied -> ", policyObject.Key)
 			previous := false
 			if policyObject.API.Scope.SliceID != nil {
-				info = info + fmt.Sprintf("Slice [SST:%v]", policyObject.API.Scope.SliceID.Sst)
+				sliceType := m.sdranManager.GetSstSlice(fmt.Sprint(policyObject.API.Scope.SliceID.Sst), true)
+				info = info + fmt.Sprintf("Slice:%v", sliceType)
 				// info = info + fmt.Sprintf("Slice [SD:%v, SST:%v, PLMN:(MCC:%v, MNC:%v)]", *policyObject.API.Scope.SliceID.SD, policyObject.API.Scope.SliceID.Sst, policyObject.API.Scope.SliceID.PlmnID.Mcc, policyObject.API.Scope.SliceID.PlmnID.Mnc)
 				previous = true
 			}
@@ -422,7 +423,9 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag 
 			info := fmt.Sprintf("ID:%v POLICY: {", policyObject.Key)
 			previous := false
 			if policyObject.API.Scope.SliceID != nil {
-				info = info + fmt.Sprintf("Slice [SST:%v]", policyObject.API.Scope.SliceID.Sst)
+				sliceType := m.sdranManager.GetSstSlice(fmt.Sprint(policyObject.API.Scope.SliceID.Sst), true)
+				info = info + fmt.Sprintf("Slice:%v", sliceType)
+				// info = info + fmt.Sprintf("Slice [SST:%v]", policyObject.API.Scope.SliceID.Sst)
 				// info = info + fmt.Sprintf("Slice [SD:%v, SST:%v, PLMN:(MCC:%v, MNC:%v)]", *policyObject.API.Scope.SliceID.SD, policyObject.API.Scope.SliceID.Sst, policyObject.API.Scope.SliceID.PlmnID.Mcc, policyObject.API.Scope.SliceID.PlmnID.Mnc)
 				previous = true
 			}
