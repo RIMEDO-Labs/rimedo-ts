@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -368,11 +369,15 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// 	}
 			// }
 			targetCellCGI := m.sdranManager.GetUtfAscii(ascii, false, true)
+			if ues[keys[i]].Id == "UE-29" {
+				log.Debug("TARGER CELL (ASCII): " + ascii)
+				log.Debug("TARGER CELL (UTF): " + targetCellCGI)
+			}
 			// log.Debug(keys[i] + " -> " + targetCellCGI)
-			_ = m.sdranManager.HandoverControl(ctx, keys[i], targetCellCGI)
-			// if err != nil {
-			// 	log.Warn(err)
-			// }
+			err = m.sdranManager.HandoverControl(ctx, keys[i], targetCellCGI)
+			if err != nil && (strings.Contains(fmt.Sprint(err), "not-existing") || strings.Contains(fmt.Sprint(err), "wrong")) {
+				log.Warn(err)
+			}
 		}
 
 		cellIDs = nil
