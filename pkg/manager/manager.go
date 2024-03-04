@@ -299,7 +299,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			if err != nil {
 				log.Error(err)
 			} else if cellData == nil {
-				cellData, err = m.sdranManager.CreateCell(ctx, cgi)
+				_, err = m.sdranManager.CreateCell(ctx, cgi)
 				if err != nil {
 					log.Error(err)
 				}
