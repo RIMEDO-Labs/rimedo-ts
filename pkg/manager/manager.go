@@ -119,57 +119,34 @@ func (m *Manager) start() error {
 			log.Debug("")
 			// m.checkPolicies(ctx, true, true, true)
 		}
-		for {
-			time.Sleep(1 * time.Second)
-			counter++
-			if counter == delay {
-				compareLengths()
-				counter = 0
-				show = true
-			} else if counter == delay-1 {
-				prepare = true
-			} else {
-				show = false
-				prepare = false
-			}
-			m.checkPolicies(ctx, &flag, show, prepare)
-			err := m.sdranManager.PrintUes(ctx, show)
-			if err != nil {
-				log.Error("Something went wrong with printing UEs")
-			}
-			err = m.sdranManager.PrintCells(ctx, show)
-			if err != nil {
-				log.Error("Something went wrong with printing UEs")
-			}
-			// flag = false
-		}
+
 	}()
 
 	// go func() {
-	// 	for {
-	// 		time.Sleep(1 * time.Second)
-	// 		counter++
-	// 		if counter == delay {
-	// 			compareLengths()
-	// 			counter = 0
-	// 			show = true
-	// 		} else if counter == delay-1 {
-	// 			prepare = true
-	// 		} else {
-	// 			show = false
-	// 			prepare = false
-	// 		}
-	// 		m.checkPolicies(ctx, &flag, show, prepare)
-	// 		err := m.sdranManager.PrintUes(ctx, show)
-	// 		if err != nil {
-	// 			log.Error("Something went wrong with printing UEs")
-	// 		}
-	// 		err = m.sdranManager.PrintCells(ctx, show)
-	// 		if err != nil {
-	// 			log.Error("Something went wrong with printing UEs")
-	// 		}
-	// 		// flag = false
-	// 	}
+	for {
+		time.Sleep(1 * time.Second)
+		counter++
+		if counter == delay {
+			compareLengths()
+			counter = 0
+			show = true
+		} else if counter == delay-1 {
+			prepare = true
+		} else {
+			show = false
+			prepare = false
+		}
+		m.checkPolicies(ctx, &flag, show, prepare)
+		err := m.sdranManager.PrintUes(ctx, show)
+		if err != nil {
+			log.Error("Something went wrong with printing UEs")
+		}
+		err = m.sdranManager.PrintCells(ctx, show)
+		if err != nil {
+			log.Error("Something went wrong with printing UEs")
+		}
+		// flag = false
+	}
 	// }()
 
 	return nil
