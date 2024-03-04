@@ -68,9 +68,17 @@ type Manager struct {
 
 func (m *Manager) Run() {
 
-	if err := m.start(); err != nil {
-		log.Fatal("Unable to run Manager", err)
-	}
+	errChan := make(chan error)
+
+	_ = m.start(errChan)
+
+	go func() {
+		for err := range errChan {
+			if err != nil {
+				log.Fatal("Unable to run Manager", err)
+			}
+		}
+	}()
 
 }
 
@@ -78,7 +86,7 @@ func (m *Manager) Close() {
 	m.a1Manager.Close(context.Background())
 }
 
-func (m *Manager) start() error {
+func (m *Manager) start(errChan chan error) error {
 
 	ctx := context.Background()
 
@@ -114,6 +122,7 @@ func (m *Manager) start() error {
 			// log.Debug("")
 			if err := m.updatePolicies(ctx, policyMap, lastReceived, &enforcmentArray, &flag); err != nil {
 				log.Warn("Some problems occured when updating Policy store!")
+				errChan <- err
 			}
 			log.Debug(m.sdranManager.DashMarks(""))
 			log.Debug("")
@@ -140,16 +149,18 @@ func (m *Manager) start() error {
 		err := m.sdranManager.PrintUes(ctx, show)
 		if err != nil {
 			log.Error("Something went wrong with printing UEs")
+			errChan <- err
 		}
 		err = m.sdranManager.PrintCells(ctx, show)
 		if err != nil {
 			log.Error("Something went wrong with printing UEs")
+			errChan <- err
 		}
 		// flag = false
 	}
 	// }()
 
-	return nil
+	// return nil
 }
 
 func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byte, received string, enfArray *[]string, defaultFlag *bool) error {
@@ -178,6 +189,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 		m.sdranManager.DeletePolicy(ctx, received)
 		log.Infof("POLICY MESSAGE: Policy [ID:%v] deleted\n", received)
 		policyObject = m.sdranManager.GetPolicy(ctx, (*enfArray)[len(*enfArray)-1])
+		log.Debug("Policy Object: " + policyObject.Key)
 		if policyObject != nil {
 			policyObject.IsEnforced = true
 			m.sdranManager.SetPolicy(ctx, policyObject.Key, policyObject)
