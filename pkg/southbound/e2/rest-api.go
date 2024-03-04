@@ -224,8 +224,11 @@ func (m *RestManager) TranslateUtfAscii(id string, cell bool) string {
 		} else {
 			temp1 := ascii[:3]
 			temp2 := ascii[len(ascii)-3:]
-			temp3 := ascii[3 : len(ascii)-3]
-
+			temp3Int, err := strconv.ParseInt(ascii[3:len(ascii)-3], 10, 0)
+			if err != nil {
+				log.Error("UTF-ASCII translation of CGI failed!")
+			}
+			temp3 := fmt.Sprint(temp3Int)
 			counter := 1
 			for len(temp3) != limit-len(temp1)-len(temp2) {
 				if counter%2 != 0 {
@@ -303,10 +306,10 @@ func (m *RestManager) GetUtfAscii(id string, ascii bool, cell bool) string {
 	} else {
 		output = m.ueAsciiUtf[id]
 	}
-	log.Debug("Utf Cell: " + fmt.Sprint(m.cellUtfAscii))
-	log.Debug("Utf UE: " + fmt.Sprint(m.ueUtfAscii))
-	log.Debug("Ascii Cell: " + fmt.Sprint(m.cellAsciiUtf))
-	log.Debug("Ascii UE: " + fmt.Sprint(m.ueAsciiUtf))
+	// log.Debug("Utf Cell: " + fmt.Sprint(m.cellUtfAscii))
+	// log.Debug("Utf UE: " + fmt.Sprint(m.ueUtfAscii))
+	// log.Debug("Ascii Cell: " + fmt.Sprint(m.cellAsciiUtf))
+	// log.Debug("Ascii UE: " + fmt.Sprint(m.ueAsciiUtf))
 	return output
 
 }
