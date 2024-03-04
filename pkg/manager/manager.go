@@ -161,7 +161,8 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 			info := fmt.Sprintf("POLICY MESSAGE: Policy [ID:%v] applied -> ", policyObject.Key)
 			previous := false
 			if policyObject.API.Scope.SliceID != nil {
-				info = info + fmt.Sprintf("Slice [SD:%v, SST:%v, PLMN:(MCC:%v, MNC:%v)]", *policyObject.API.Scope.SliceID.SD, policyObject.API.Scope.SliceID.Sst, policyObject.API.Scope.SliceID.PlmnID.Mcc, policyObject.API.Scope.SliceID.PlmnID.Mnc)
+				info = info + fmt.Sprintf("Slice [SST:%v]", policyObject.API.Scope.SliceID.Sst)
+				// info = info + fmt.Sprintf("Slice [SD:%v, SST:%v, PLMN:(MCC:%v, MNC:%v)]", *policyObject.API.Scope.SliceID.SD, policyObject.API.Scope.SliceID.Sst, policyObject.API.Scope.SliceID.PlmnID.Mcc, policyObject.API.Scope.SliceID.PlmnID.Mnc)
 				previous = true
 			}
 			if policyObject.API.Scope.UeID != nil {
@@ -369,10 +370,10 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// 	}
 			// }
 			targetCellCGI := m.sdranManager.GetUtfAscii(ascii, false, true)
-			if ues[keys[i]].Id == "UE-29" {
-				log.Debug("TARGER CELL (ASCII): " + ascii)
-				log.Debug("TARGER CELL (UTF): " + targetCellCGI)
-			}
+			// if ues[keys[i]].Id == "UE-29" {
+			// 	log.Debug("TARGER CELL (ASCII): " + ascii)
+			// 	log.Debug("TARGER CELL (UTF): " + targetCellCGI)
+			// }
 			// log.Debug(keys[i] + " -> " + targetCellCGI)
 			err = m.sdranManager.HandoverControl(ctx, keys[i], targetCellCGI)
 			if err != nil && (strings.Contains(fmt.Sprint(err), "not-existing") || strings.Contains(fmt.Sprint(err), "wrong")) {
@@ -410,7 +411,8 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag 
 			info := fmt.Sprintf("ID:%v POLICY: {", policyObject.Key)
 			previous := false
 			if policyObject.API.Scope.SliceID != nil {
-				info = info + fmt.Sprintf("Slice [SD:%v, SST:%v, PLMN:(MCC:%v, MNC:%v)]", *policyObject.API.Scope.SliceID.SD, policyObject.API.Scope.SliceID.Sst, policyObject.API.Scope.SliceID.PlmnID.Mcc, policyObject.API.Scope.SliceID.PlmnID.Mnc)
+				info = info + fmt.Sprintf("Slice [SST:%v]", policyObject.API.Scope.SliceID.Sst)
+				// info = info + fmt.Sprintf("Slice [SD:%v, SST:%v, PLMN:(MCC:%v, MNC:%v)]", *policyObject.API.Scope.SliceID.SD, policyObject.API.Scope.SliceID.Sst, policyObject.API.Scope.SliceID.PlmnID.Mcc, policyObject.API.Scope.SliceID.PlmnID.Mnc)
 				previous = true
 			}
 			if policyObject.API.Scope.UeID != nil {
