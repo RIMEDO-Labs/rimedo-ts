@@ -96,20 +96,23 @@ var SampleNotEnforcedStatus = `
 
 var SampleNotEnforcedPolicyID = "2"
 
-func NewA1PService(policyMap *map[string][]byte, notifier chan bool) service.Service {
+func NewA1PService(received *string, policyMap *map[string][]byte, notifier chan bool) service.Service {
 	return &A1PService{
+		LastReceived:    received,
 		TsPolicyTypeMap: policyMap,
 		notifier:        notifier,
 	}
 }
 
 type A1PService struct {
+	LastReceived    *string
 	TsPolicyTypeMap *map[string][]byte
 	notifier        chan bool
 }
 
 func (a *A1PService) Register(s *grpc.Server) {
 	server := &A1PServer{
+		LastReceived:    *a.LastReceived,
 		TsPolicyTypeMap: *a.TsPolicyTypeMap,
 		StatusUpdateCh:  make(chan *a1tapi.PolicyStatusMessage),
 		notifier:        a.notifier,
@@ -118,6 +121,7 @@ func (a *A1PService) Register(s *grpc.Server) {
 }
 
 type A1PServer struct {
+	LastReceived    string
 	TsPolicyTypeMap map[string][]byte
 	StatusUpdateCh  chan *a1tapi.PolicyStatusMessage
 	notifier        chan bool
@@ -170,6 +174,7 @@ func (a *A1PServer) PolicySetup(ctx context.Context, message *a1tapi.PolicyReque
 		return res, nil
 	}
 
+	a.LastReceived = message.PolicyId
 	a.TsPolicyTypeMap[message.PolicyId] = message.Message.Payload
 
 	go func() {
@@ -266,6 +271,7 @@ func (a *A1PServer) PolicyUpdate(ctx context.Context, message *a1tapi.PolicyRequ
 		return res, nil
 	}
 
+	a.LastReceived = message.PolicyId
 	a.TsPolicyTypeMap[message.PolicyId] = message.Message.Payload
 
 	go func() {
@@ -361,6 +367,7 @@ func (a *A1PServer) PolicyDelete(ctx context.Context, message *a1tapi.PolicyRequ
 		return res, nil
 	}
 
+	a.LastReceived = message.PolicyId
 	delete(a.TsPolicyTypeMap, message.PolicyId)
 
 	res := &a1tapi.PolicyResultMessage{

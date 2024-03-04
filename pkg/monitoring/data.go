@@ -36,4 +36,5 @@ type PolicyData struct {
 	Key        string
 	API        *policyAPI.API
 	IsEnforced bool
+	IsLastOne  bool
 }
