@@ -119,10 +119,6 @@ func (m *Manager) start() error {
 			log.Debug("")
 			// m.checkPolicies(ctx, true, true, true)
 		}
-
-	}()
-
-	go func() {
 		for {
 			time.Sleep(1 * time.Second)
 			counter++
@@ -149,6 +145,33 @@ func (m *Manager) start() error {
 		}
 	}()
 
+	// go func() {
+	// 	for {
+	// 		time.Sleep(1 * time.Second)
+	// 		counter++
+	// 		if counter == delay {
+	// 			compareLengths()
+	// 			counter = 0
+	// 			show = true
+	// 		} else if counter == delay-1 {
+	// 			prepare = true
+	// 		} else {
+	// 			show = false
+	// 			prepare = false
+	// 		}
+	// 		m.checkPolicies(ctx, &flag, show, prepare)
+	// 		err := m.sdranManager.PrintUes(ctx, show)
+	// 		if err != nil {
+	// 			log.Error("Something went wrong with printing UEs")
+	// 		}
+	// 		err = m.sdranManager.PrintCells(ctx, show)
+	// 		if err != nil {
+	// 			log.Error("Something went wrong with printing UEs")
+	// 		}
+	// 		// flag = false
+	// 	}
+	// }()
+
 	return nil
 }
 
@@ -156,8 +179,8 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	// printFlag := false
-	printString := ""
+	printFlag := false
+	// printString := ""
 
 	// var r policyAPI.API
 	var policyObject *monitoring.PolicyData
@@ -181,7 +204,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 		if policyObject != nil {
 			policyObject.IsEnforced = true
 			m.sdranManager.SetPolicy(ctx, policyObject.Key, policyObject)
-			printString = "old"
+			printFlag = true
 		} else {
 			*defaultFlag = true
 		}
@@ -191,13 +214,13 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 			// *defaultFlag = false
 			newMap = append(newMap, received)
 			policyObject = m.sdranManager.CreatePolicy(ctx, received, &r)
-			printString = "new"
+			printFlag = true
 		} else {
 			log.Warn("Can't unmarshal the JSON file!")
 			return err
 		}
 	}
-	if printString == "old" || printString == "new" {
+	if printFlag {
 		// policyObject := m.sdranManager.GetPolicy(ctx, i)
 		info := fmt.Sprintf("POLICY MESSAGE: Policy [ID:%v] applied -> ", policyObject.Key)
 		previous := false
