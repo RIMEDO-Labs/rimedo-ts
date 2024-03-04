@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/RIMEDO-Labs/rimedo-ts/pkg/monitoring"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/northbound/a1"
 	"github.com/RIMEDO-Labs/rimedo-ts/pkg/sdran"
 	policyAPI "github.com/onosproject/onos-a1-dm/go/policy_schemas/traffic_steering_preference/v2"
@@ -97,13 +98,21 @@ func (m *Manager) start() error {
 
 	m.a1Manager.Start()
 
+	flag := true
+	show := false
+	prepare := false
+	counter := 0
+	delay := 5
+	time.Sleep(5 * time.Second)
+	log.Info("\n\n\n\n\n\n\n\n\n\n")
+
 	go func() {
 		for range policyChange {
 			log.Debug("")
 			// drawWithLine("POLICY STORE CHANGED!", logLength)
 			log.Debug(m.sdranManager.DashMarks("POLICY STORE CHANGED!"))
 			// log.Debug("")
-			if err := m.updatePolicies(ctx, policyMap, lastReceived, &enforcmentArray); err != nil {
+			if err := m.updatePolicies(ctx, policyMap, lastReceived, &enforcmentArray, &flag); err != nil {
 				log.Warn("Some problems occured when updating Policy store!")
 			}
 			log.Debug(m.sdranManager.DashMarks(""))
@@ -112,20 +121,7 @@ func (m *Manager) start() error {
 		}
 
 	}()
-	log.Debug("")
-	log.Debug("")
-	log.Debug("")
-	log.Debug("HERE!!!")
-	log.Debug("")
-	log.Debug("")
-	log.Debug("")
-	flag := true
-	show := false
-	prepare := false
-	counter := 0
-	delay := 5
-	time.Sleep(5 * time.Second)
-	log.Info("\n\n\n\n\n\n\n\n\n\n")
+
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
@@ -149,16 +145,22 @@ func (m *Manager) start() error {
 			if err != nil {
 				log.Error("Something went wrong with printing UEs")
 			}
-			flag = false
+			// flag = false
 		}
 	}()
 
 	return nil
 }
 
-func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byte, received string, enfArray *[]string) error {
+func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byte, received string, enfArray *[]string, defaultFlag *bool) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+
+	// printFlag := false
+	printString := ""
+
+	// var r policyAPI.API
+	var policyObject *monitoring.PolicyData
 
 	newMap := make([]string, 0)
 	for _, item := range *enfArray {
@@ -167,102 +169,109 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 		}
 	}
 
-	log.Debug("POLICY MAP: " + fmt.Sprint(policyMap))
-	log.Debug("RECEIVED: " + received)
+	// log.Debug("POLICY MAP: " + fmt.Sprint(policyMap))
+	// log.Debug("RECEIVED: " + received)
 
 	if _, ok := policyMap[received]; !ok {
 		m.sdranManager.DeletePolicy(ctx, received)
 		log.Infof("POLICY MESSAGE: Policy [ID:%v] deleted\n", received)
-		policyData := m.sdranManager.GetPolicy(ctx, (*enfArray)[len(*enfArray)-1])
-		if policyData != nil {
-			policyData.IsEnforced = true
-			m.sdranManager.SetPolicy(ctx, policyData.Key, policyData)
+		policyObject = m.sdranManager.GetPolicy(ctx, (*enfArray)[len(*enfArray)-1])
+		if policyObject != nil {
+			policyObject.IsEnforced = true
+			m.sdranManager.SetPolicy(ctx, policyObject.Key, policyObject)
+			printString = "old"
+		} else {
+			*defaultFlag = true
 		}
 	} else {
+		*defaultFlag = false
 		newMap = append(newMap, received)
 		r, err := policyAPI.UnmarshalAPI(policyMap[received])
 		if err == nil {
-			// policyObject := m.sdranManager.GetPolicy(ctx, i)
-			policyObject := m.sdranManager.CreatePolicy(ctx, received, &r)
-			info := fmt.Sprintf("POLICY MESSAGE: Policy [ID:%v] applied -> ", policyObject.Key)
-			previous := false
-			if policyObject.API.Scope.SliceID != nil {
-				sliceType := m.sdranManager.GetSstSlice(fmt.Sprint(policyObject.API.Scope.SliceID.Sst), true)
-				info = info + fmt.Sprintf("Slice:%v", sliceType)
-				// info = info + fmt.Sprintf("Slice [SD:%v, SST:%v, PLMN:(MCC:%v, MNC:%v)]", *policyObject.API.Scope.SliceID.SD, policyObject.API.Scope.SliceID.Sst, policyObject.API.Scope.SliceID.PlmnID.Mcc, policyObject.API.Scope.SliceID.PlmnID.Mnc)
-				previous = true
-			}
-			if policyObject.API.Scope.UeID != nil {
-				if previous {
-					info = info + ", "
-				}
-				ue := *policyObject.API.Scope.UeID
-				// new_ue := ue
-				// for i := 0; i < len(ue); i++ {
-				// 	if ue[i:i+1] == "0" {
-				// 		new_ue = ue[i+1:]
-				// 	} else {
-				// 		break
-				// 	}
-				// }
-				new_ue := m.sdranManager.GetUtfAscii(ue, false, false)
-				info = info + fmt.Sprintf("UE [ID:%v]", new_ue)
-				previous = true
-			}
-			if policyObject.API.Scope.QosID != nil {
-				if previous {
-					info = info + ", "
-				}
-				if policyObject.API.Scope.QosID.QcI != nil {
-					info = info + fmt.Sprintf("QoS [QCI:%v]", *policyObject.API.Scope.QosID.QcI)
-				}
-				if policyObject.API.Scope.QosID.The5QI != nil {
-					info = info + fmt.Sprintf("QoS [5QI:%v]", *policyObject.API.Scope.QosID.The5QI)
-				}
-			}
-			if policyObject.API.Scope.CellID != nil {
-				if previous {
-					info = info + ", "
-				}
-				info = info + "CELL ["
-				var eNci string
-				if policyObject.API.Scope.CellID.CID.NcI != nil {
-
-					// info = info + fmt.Sprintf("NCI:%v, ", *policyObject.API.Scope.CellID.CID.NcI)
-					eNci = fmt.Sprint(*policyObject.API.Scope.CellID.CID.NcI)
-
-				} else if policyObject.API.Scope.CellID.CID.EcI != nil {
-
-					// info = info + fmt.Sprintf("ECI:%v, ", *policyObject.API.Scope.CellID.CID.EcI)
-					eNci = fmt.Sprint(*policyObject.API.Scope.CellID.CID.EcI)
-
-				}
-				// info = info + fmt.Sprintf("PLMN:(MCC:%v, MNC:%v)]", policyObject.API.Scope.CellID.PlmnID.Mcc, policyObject.API.Scope.CellID.PlmnID.Mnc)
-				mnc := policyObject.API.Scope.CellID.PlmnID.Mnc
-				mcc := policyObject.API.Scope.CellID.PlmnID.Mcc
-				cgi := m.sdranManager.GetUtfAscii(mnc+eNci+mcc, false, true)
-				info = info + fmt.Sprintf("CGI:%v]", cgi)
-			}
-			for i := range policyObject.API.TSPResources {
-				info = info + fmt.Sprintf(" - (%v) -", policyObject.API.TSPResources[i].Preference)
-				for j := range policyObject.API.TSPResources[i].CellIDList {
-					nci := *policyObject.API.TSPResources[i].CellIDList[j].CID.NcI
-					// plmnId, _ := monitoring.GetPlmnIdFromMccMnc(policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc, policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc, false)
-					mcc := policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc
-					mnc := policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc
-					// cgi := m.PlmnIDNciToTopoCGI(plmnId, uint64(nci))
-					cgi := m.sdranManager.GetUtfAscii(mnc+fmt.Sprint(nci)+mcc, false, true)
-					info = info + fmt.Sprintf(" CELL [CGI:%v],", cgi)
-				}
-				info = info[0 : len(info)-1]
-
-			}
-			info = info + "\n"
-			log.Info(info)
+			policyObject = m.sdranManager.CreatePolicy(ctx, received, &r)
+			printString = "new"
 		} else {
 			log.Warn("Can't unmarshal the JSON file!")
 			return err
 		}
+	}
+	if printString == "old" || printString == "new" {
+		// policyObject := m.sdranManager.GetPolicy(ctx, i)
+		info := fmt.Sprintf("POLICY MESSAGE: Policy [ID:%v] applied -> ", policyObject.Key)
+		previous := false
+		if policyObject.API.Scope.SliceID != nil {
+			sliceType := m.sdranManager.GetSstSlice(fmt.Sprint(policyObject.API.Scope.SliceID.Sst), true)
+			info = info + fmt.Sprintf("Slice:%v", sliceType)
+			// info = info + fmt.Sprintf("Slice [SD:%v, SST:%v, PLMN:(MCC:%v, MNC:%v)]", *policyObject.API.Scope.SliceID.SD, policyObject.API.Scope.SliceID.Sst, policyObject.API.Scope.SliceID.PlmnID.Mcc, policyObject.API.Scope.SliceID.PlmnID.Mnc)
+			previous = true
+		}
+		if policyObject.API.Scope.UeID != nil {
+			if previous {
+				info = info + ", "
+			}
+			ue := *policyObject.API.Scope.UeID
+			// new_ue := ue
+			// for i := 0; i < len(ue); i++ {
+			// 	if ue[i:i+1] == "0" {
+			// 		new_ue = ue[i+1:]
+			// 	} else {
+			// 		break
+			// 	}
+			// }
+			new_ue := m.sdranManager.GetUtfAscii(ue, false, false)
+			info = info + fmt.Sprintf("UE [ID:%v]", new_ue)
+			previous = true
+		}
+		if policyObject.API.Scope.QosID != nil {
+			if previous {
+				info = info + ", "
+			}
+			if policyObject.API.Scope.QosID.QcI != nil {
+				info = info + fmt.Sprintf("QoS [QCI:%v]", *policyObject.API.Scope.QosID.QcI)
+			}
+			if policyObject.API.Scope.QosID.The5QI != nil {
+				info = info + fmt.Sprintf("QoS [5QI:%v]", *policyObject.API.Scope.QosID.The5QI)
+			}
+		}
+		if policyObject.API.Scope.CellID != nil {
+			if previous {
+				info = info + ", "
+			}
+			info = info + "CELL ["
+			var eNci string
+			if policyObject.API.Scope.CellID.CID.NcI != nil {
+
+				// info = info + fmt.Sprintf("NCI:%v, ", *policyObject.API.Scope.CellID.CID.NcI)
+				eNci = fmt.Sprint(*policyObject.API.Scope.CellID.CID.NcI)
+
+			} else if policyObject.API.Scope.CellID.CID.EcI != nil {
+
+				// info = info + fmt.Sprintf("ECI:%v, ", *policyObject.API.Scope.CellID.CID.EcI)
+				eNci = fmt.Sprint(*policyObject.API.Scope.CellID.CID.EcI)
+
+			}
+			// info = info + fmt.Sprintf("PLMN:(MCC:%v, MNC:%v)]", policyObject.API.Scope.CellID.PlmnID.Mcc, policyObject.API.Scope.CellID.PlmnID.Mnc)
+			mnc := policyObject.API.Scope.CellID.PlmnID.Mnc
+			mcc := policyObject.API.Scope.CellID.PlmnID.Mcc
+			cgi := m.sdranManager.GetUtfAscii(mnc+eNci+mcc, false, true)
+			info = info + fmt.Sprintf("CGI:%v]", cgi)
+		}
+		for i := range policyObject.API.TSPResources {
+			info = info + fmt.Sprintf(" - (%v) -", policyObject.API.TSPResources[i].Preference)
+			for j := range policyObject.API.TSPResources[i].CellIDList {
+				nci := *policyObject.API.TSPResources[i].CellIDList[j].CID.NcI
+				// plmnId, _ := monitoring.GetPlmnIdFromMccMnc(policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc, policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc, false)
+				mcc := policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mcc
+				mnc := policyObject.API.TSPResources[i].CellIDList[j].PlmnID.Mnc
+				// cgi := m.PlmnIDNciToTopoCGI(plmnId, uint64(nci))
+				cgi := m.sdranManager.GetUtfAscii(mnc+fmt.Sprint(nci)+mcc, false, true)
+				info = info + fmt.Sprintf(" CELL [CGI:%v],", cgi)
+			}
+			info = info[0 : len(info)-1]
+
+		}
+		info = info + "\n"
+		log.Info(info)
 	}
 	*enfArray = newMap
 
