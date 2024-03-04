@@ -136,7 +136,7 @@ func (m *Manager) start() error {
 				show = false
 				prepare = false
 			}
-			m.checkPolicies(ctx, flag, show, prepare)
+			m.checkPolicies(ctx, &flag, show, prepare)
 			err := m.sdranManager.PrintUes(ctx, show)
 			if err != nil {
 				log.Error("Something went wrong with printing UEs")
@@ -184,10 +184,10 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 			*defaultFlag = true
 		}
 	} else {
-		*defaultFlag = false
-		newMap = append(newMap, received)
 		r, err := policyAPI.UnmarshalAPI(policyMap[received])
 		if err == nil {
+			// *defaultFlag = false
+			newMap = append(newMap, received)
 			policyObject = m.sdranManager.CreatePolicy(ctx, received, &r)
 			printString = "new"
 		} else {
@@ -526,7 +526,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 
 }
 
-func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag bool, prepareFlag bool) {
+func (m *Manager) checkPolicies(ctx context.Context, defaultFlag *bool, showFlag bool, prepareFlag bool) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	policyLen := 0
@@ -536,8 +536,9 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag bool, showFlag 
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	if defaultFlag && (len(policies) == 0) {
+	if *defaultFlag && (len(policies) == 0) {
 		log.Infof("POLICY MESSAGE: Default policy applied\n")
+		*defaultFlag = false
 	}
 	if prepareFlag && len(policies) != 0 {
 		if showFlag {
