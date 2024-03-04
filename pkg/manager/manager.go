@@ -113,7 +113,7 @@ func (m *Manager) start() error {
 	show := false
 	prepare := false
 	counter := 0
-	delay := 3
+	delay := 2
 	time.Sleep(5 * time.Second)
 	log.Info("\n\n\n\n\n\n\n\n\n\n")
 	go func() {
