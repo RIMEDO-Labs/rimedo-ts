@@ -168,6 +168,8 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 			newMap = append(newMap, item)
 		}
 	}
+	log.Debug("ENF ARRAY: " + fmt.Sprint(*enfArray))
+	log.Debug("NEW ARRAY: " + fmt.Sprint(newMap))
 
 	// log.Debug("POLICY MAP: " + fmt.Sprint(policyMap))
 	// log.Debug("RECEIVED: " + received)
