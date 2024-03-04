@@ -204,7 +204,7 @@ func (a *A1PServer) PolicySetup(ctx context.Context, message *a1tapi.PolicyReque
 	}()
 
 	res := &a1tapi.PolicyResultMessage{
-		PolicyId:   message.PolicyId,
+		PolicyId:   a.LastReceived,
 		PolicyType: message.PolicyType,
 		Message: &a1tapi.ResultMessage{
 			Header: &a1tapi.Header{
@@ -301,7 +301,7 @@ func (a *A1PServer) PolicyUpdate(ctx context.Context, message *a1tapi.PolicyRequ
 	}()
 
 	res := &a1tapi.PolicyResultMessage{
-		PolicyId:   message.PolicyId,
+		PolicyId:   a.LastReceived,
 		PolicyType: message.PolicyType,
 		Message: &a1tapi.ResultMessage{
 			Header: &a1tapi.Header{
@@ -371,7 +371,7 @@ func (a *A1PServer) PolicyDelete(ctx context.Context, message *a1tapi.PolicyRequ
 	delete(a.TsPolicyTypeMap, message.PolicyId)
 
 	res := &a1tapi.PolicyResultMessage{
-		PolicyId:   message.PolicyId,
+		PolicyId:   a.LastReceived,
 		PolicyType: message.PolicyType,
 		Message: &a1tapi.ResultMessage{
 			Header: &a1tapi.Header{
@@ -482,6 +482,7 @@ func (a *A1PServer) PolicyQuery(ctx context.Context, message *a1tapi.PolicyReque
 
 	switch message.Message.Header.PayloadType {
 	case a1tapi.PayloadType_POLICY:
+		resultMsg.PolicyId = a.LastReceived
 		resultMsg.Message.Payload = a.TsPolicyTypeMap[message.PolicyId]
 		resultMsg.Message.Header.PayloadType = a1tapi.PayloadType_POLICY
 	case a1tapi.PayloadType_STATUS:
