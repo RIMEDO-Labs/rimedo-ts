@@ -112,7 +112,7 @@ type A1PService struct {
 
 func (a *A1PService) Register(s *grpc.Server) {
 	server := &A1PServer{
-		LastReceived:    *a.LastReceived,
+		LastReceived:    a.LastReceived,
 		TsPolicyTypeMap: *a.TsPolicyTypeMap,
 		StatusUpdateCh:  make(chan *a1tapi.PolicyStatusMessage),
 		notifier:        a.notifier,
@@ -121,7 +121,7 @@ func (a *A1PService) Register(s *grpc.Server) {
 }
 
 type A1PServer struct {
-	LastReceived    string
+	LastReceived    *string
 	TsPolicyTypeMap map[string][]byte
 	StatusUpdateCh  chan *a1tapi.PolicyStatusMessage
 	notifier        chan bool
@@ -174,7 +174,7 @@ func (a *A1PServer) PolicySetup(ctx context.Context, message *a1tapi.PolicyReque
 		return res, nil
 	}
 
-	a.LastReceived = message.PolicyId
+	*a.LastReceived = message.PolicyId
 	a.TsPolicyTypeMap[message.PolicyId] = message.Message.Payload
 
 	go func() {
@@ -204,7 +204,7 @@ func (a *A1PServer) PolicySetup(ctx context.Context, message *a1tapi.PolicyReque
 	}()
 
 	res := &a1tapi.PolicyResultMessage{
-		PolicyId:   a.LastReceived,
+		PolicyId:   message.PolicyId,
 		PolicyType: message.PolicyType,
 		Message: &a1tapi.ResultMessage{
 			Header: &a1tapi.Header{
@@ -271,7 +271,7 @@ func (a *A1PServer) PolicyUpdate(ctx context.Context, message *a1tapi.PolicyRequ
 		return res, nil
 	}
 
-	a.LastReceived = message.PolicyId
+	*a.LastReceived = message.PolicyId
 	a.TsPolicyTypeMap[message.PolicyId] = message.Message.Payload
 
 	go func() {
@@ -301,7 +301,7 @@ func (a *A1PServer) PolicyUpdate(ctx context.Context, message *a1tapi.PolicyRequ
 	}()
 
 	res := &a1tapi.PolicyResultMessage{
-		PolicyId:   a.LastReceived,
+		PolicyId:   message.PolicyId,
 		PolicyType: message.PolicyType,
 		Message: &a1tapi.ResultMessage{
 			Header: &a1tapi.Header{
@@ -367,11 +367,11 @@ func (a *A1PServer) PolicyDelete(ctx context.Context, message *a1tapi.PolicyRequ
 		return res, nil
 	}
 
-	a.LastReceived = message.PolicyId
+	*a.LastReceived = message.PolicyId
 	delete(a.TsPolicyTypeMap, message.PolicyId)
 
 	res := &a1tapi.PolicyResultMessage{
-		PolicyId:   a.LastReceived,
+		PolicyId:   message.PolicyId,
 		PolicyType: message.PolicyType,
 		Message: &a1tapi.ResultMessage{
 			Header: &a1tapi.Header{
@@ -482,7 +482,6 @@ func (a *A1PServer) PolicyQuery(ctx context.Context, message *a1tapi.PolicyReque
 
 	switch message.Message.Header.PayloadType {
 	case a1tapi.PayloadType_POLICY:
-		resultMsg.PolicyId = a.LastReceived
 		resultMsg.Message.Payload = a.TsPolicyTypeMap[message.PolicyId]
 		resultMsg.Message.Header.PayloadType = a1tapi.PayloadType_POLICY
 	case a1tapi.PayloadType_STATUS:
