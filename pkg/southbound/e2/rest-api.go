@@ -699,7 +699,9 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 					suboutput = suboutput + ", "
 				}
 				if len(output+suboutput) > m.logLength-3 {
-					log.Debug(output + suboutput)
+					if print {
+						log.Debug(" " + output + suboutput)
+					}
 					output = ""
 					suboutput = ""
 					flag = false
