@@ -701,7 +701,7 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 				if len(output+suboutput) > m.logLength-3 {
 					if print {
 						var prefix string
-						if strings.Contains(output, " CGI") {
+						if !strings.Contains(output, " CGI") {
 							prefix = " "
 						} else {
 							prefix = ""
@@ -718,7 +718,7 @@ func (m *RestManager) PrintCells(ctx context.Context, print bool) error {
 			output = output + suboutput + "]"
 			if print {
 				var prefix string
-				if strings.Contains(output, " CGI") {
+				if !strings.Contains(output, " CGI") {
 					prefix = " "
 				} else {
 					prefix = ""
