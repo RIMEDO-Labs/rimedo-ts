@@ -568,7 +568,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 
 func (m *Manager) executeHandoverControl(ctx context.Context) error {
 
-	log.Debug("HO Map: " + fmt.Sprint(m.handoverControlMap))
+	// log.Debug("HO Map: " + fmt.Sprint(m.handoverControlMap))
 	for cgi, array := range m.handoverControlMap {
 		for _, ue := range array {
 			err := m.sdranManager.HandoverControl(ctx, ue, cgi)
