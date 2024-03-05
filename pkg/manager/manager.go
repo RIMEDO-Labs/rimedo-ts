@@ -554,6 +554,7 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag *bool, showFlag
 	sort.Strings(keys)
 	if *defaultFlag && (len(policies) == 0) {
 		log.Info(" POLICY MESSAGE: Default policy applied ")
+		log.Info("")
 		*defaultFlag = false
 	}
 	if prepareFlag && len(policies) != 0 {
