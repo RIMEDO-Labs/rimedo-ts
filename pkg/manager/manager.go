@@ -187,16 +187,20 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 	if _, ok := policyMap[received]; !ok {
 		m.sdranManager.DeletePolicy(ctx, received)
 		log.Infof(" POLICY MESSAGE: Policy [ID:%v] deleted ", received)
-		policyObject = m.sdranManager.GetPolicy(ctx, newMap[len(newMap)-1])
-		// log.Debug("Policy Keys: ")
-		// policies := m.sdranManager.GetPolicies(ctx)
-		// for key, _ := range policies {
-		// 	log.Debug(key)
-		// }
-		if policyObject != nil {
-			policyObject.IsEnforced = true
-			m.sdranManager.SetPolicy(ctx, policyObject.Key, policyObject)
-			printFlag = true
+		if len(newMap) != 0 {
+			policyObject = m.sdranManager.GetPolicy(ctx, newMap[len(newMap)-1])
+			// log.Debug("Policy Keys: ")
+			// policies := m.sdranManager.GetPolicies(ctx)
+			// for key, _ := range policies {
+			// 	log.Debug(key)
+			// }
+			if policyObject != nil {
+				policyObject.IsEnforced = true
+				m.sdranManager.SetPolicy(ctx, policyObject.Key, policyObject)
+				printFlag = true
+			} else {
+				*defaultFlag = true
+			}
 		} else {
 			*defaultFlag = true
 		}
