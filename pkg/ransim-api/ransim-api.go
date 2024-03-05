@@ -42,7 +42,7 @@ func NewHandler(endpoint string, nodeManager *monitoring.NodeManager) (Handler, 
 		return nil, err
 	}
 
-	log.Info("Dialed gRPC to ransim endpoint")
+	log.Info(" Dialed gRPC to ransim endpoint ")
 
 	return &handler{
 		ueClient:    modelAPI.NewUEModelClient(conn),
@@ -64,7 +64,7 @@ func (h *handler) GetUesParameters(ctx context.Context) error {
 
 	stream, err := h.ueClient.ListUEs(ctx, &modelAPI.ListUEsRequest{})
 	if err != nil {
-		log.Warn("Something's gone wrong when getting the UEs info list [GetUEs()].", err)
+		log.Warn(" Something's gone wrong when getting the UEs info list [GetUEs()]. ", err)
 	}
 
 	for {
@@ -82,7 +82,7 @@ func (h *handler) GetUesParameters(ctx context.Context) error {
 		}
 		ueData := h.nodeManager.GetUe(ctx, id)
 		if ueData == nil {
-			return fmt.Errorf("There's no such UE")
+			return fmt.Errorf(" There's no such UE ")
 		}
 		var fiveQi int64
 		if int64(ue.FiveQi) > 127 {
@@ -92,7 +92,7 @@ func (h *handler) GetUesParameters(ctx context.Context) error {
 		}
 		if ueData.FiveQi != fiveQi {
 			log.Debug("")
-			log.Infof("QUALITY MESSAGE: 5QI for UE [ID:%v] changed [5QI:%v]", key, fiveQi)
+			log.Infof(" QUALITY MESSAGE: 5QI for UE [ID:%v] changed [5QI:%v] ", key, fiveQi)
 			log.Debug("")
 		}
 		ueData.FiveQi = fiveQi

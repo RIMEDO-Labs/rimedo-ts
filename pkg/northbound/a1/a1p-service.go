@@ -511,9 +511,9 @@ func (a *A1PServer) PolicyStatus(server a1tapi.PolicyService_PolicyStatusServer)
 			for _, v := range watchers {
 				select {
 				case v <- ack:
-					log.Debugf("Sent msg %v on %v", ack, v)
+					log.Debugf(" Sent msg %v on %v ", ack, v)
 				default:
-					log.Debugf("Failed to send msg %v on %v", ack, v)
+					log.Debugf(" Failed to send msg %v on %v ", ack, v)
 				}
 			}
 			m.Unlock()
@@ -542,7 +542,7 @@ func (a *A1PServer) PolicyStatus(server a1tapi.PolicyService_PolicyStatusServer)
 						return
 					}
 				case <-timerCh:
-					log.Error(fmt.Errorf("could not receive PolicyACKMessage in timer"))
+					log.Error(fmt.Errorf(" could not receive PolicyACKMessage in timer "))
 					m.Lock()
 					close(ackCh)
 					delete(watchers, watcherID)

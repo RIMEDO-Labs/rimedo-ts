@@ -119,7 +119,7 @@ func (m *Manager) start() error {
 			log.Debug(m.sdranManager.DashMarks("POLICY STORE CHANGED!"))
 			// log.Debug("")
 			if err := m.updatePolicies(ctx, policyMap, lastReceived, &enforcmentArray, &flag); err != nil {
-				log.Warn("Some problems occured when updating Policy store!")
+				log.Warn(" Some problems occured when updating policy store! ")
 				// errChan <- err
 			}
 			log.Debug(m.sdranManager.DashMarks(""))
@@ -146,12 +146,12 @@ func (m *Manager) start() error {
 			m.checkPolicies(ctx, &flag, show, prepare)
 			err := m.sdranManager.PrintUes(ctx, show)
 			if err != nil {
-				log.Error("Something went wrong with printing UEs")
+				log.Error(" Something went wrong with printing UEs ")
 				// errChan <- err
 			}
 			err = m.sdranManager.PrintCells(ctx, show)
 			if err != nil {
-				log.Error("Something went wrong with printing UEs")
+				log.Error(" Something went wrong with printing UEs ")
 				// errChan <- err
 			}
 			// flag = false
@@ -185,7 +185,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 
 	if _, ok := policyMap[received]; !ok {
 		m.sdranManager.DeletePolicy(ctx, received)
-		log.Infof("POLICY MESSAGE: Policy [ID:%v] deleted\n", received)
+		log.Infof(" POLICY MESSAGE: Policy [ID:%v] deleted ", received)
 		policyObject = m.sdranManager.GetPolicy(ctx, newMap[len(newMap)-1])
 		// log.Debug("Policy Keys: ")
 		// policies := m.sdranManager.GetPolicies(ctx)
@@ -207,7 +207,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 			policyObject = m.sdranManager.CreatePolicy(ctx, received, &r)
 			printFlag = true
 		} else {
-			log.Warn("Can't unmarshal the JSON file!")
+			log.Warn(" Can't unmarshal the JSON file! ")
 			return err
 		}
 	}
@@ -286,7 +286,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 			info = info[0 : len(info)-1]
 
 		}
-		info = info + "\n"
+		// info = info + "\n"
 		log.Info(info)
 	}
 	*enfArray = newMap
@@ -401,11 +401,11 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 		var rsrps []float64
 		fiveQi, err := strconv.ParseInt(ues[keys[i]].FiveQi, 10, 64)
 		if err != nil {
-			log.Error("Something went wrong!")
+			log.Error(" Something went wrong! ")
 		}
 		sst, err := strconv.ParseInt(m.sdranManager.GetSstSlice(ues[keys[i]].Slice, false), 10, 64)
 		if err != nil {
-			log.Error("Something went wrong!")
+			log.Error(" Something went wrong! ")
 		}
 		sd := "456DEF"
 		asciiUeId := m.sdranManager.GetUtfAscii(keys[i], true, false)
@@ -468,7 +468,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			mnc := temp[:3]
 			nci, err := strconv.ParseInt(temp[3:len(temp)-3], 10, 64)
 			if err != nil {
-				log.Error("Something went wrong!")
+				log.Error(" Something went wrong! ")
 			}
 			// nci, err := strconv.ParseInt(restApiManager.TranslateUtfAscii(tab[1], true), 10, 64)
 			// if err != nil {
@@ -490,7 +490,7 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			cellIDs = append(cellIDs, cellID)
 			rsrp, err := strconv.ParseFloat(ues[keys[i]].RsrpTab[cgiKeys[j]], 64)
 			if err != nil {
-				log.Error("Something went wrong!")
+				log.Error(" Something went wrong! ")
 			}
 			rsrps = append(rsrps, rsrp)
 
@@ -553,7 +553,7 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag *bool, showFlag
 	}
 	sort.Strings(keys)
 	if *defaultFlag && (len(policies) == 0) {
-		log.Infof("POLICY MESSAGE: Default policy applied\n")
+		log.Info(" POLICY MESSAGE: Default policy applied ")
 		*defaultFlag = false
 	}
 	if prepareFlag && len(policies) != 0 {
@@ -641,9 +641,9 @@ func (m *Manager) checkPolicies(ctx context.Context, defaultFlag *bool, showFlag
 			}
 			info = info + "} STATUS: "
 			if policyObject.IsEnforced {
-				info = info + "ENFORCED"
+				info = info + "ENFORCED "
 			} else {
-				info = info + "NOT ENFORCED"
+				info = info + "NOT ENFORCED "
 			}
 			if policyLen < len(info) {
 				policyLen = len(info)

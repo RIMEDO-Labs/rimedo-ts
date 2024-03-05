@@ -200,7 +200,6 @@ func (c *NodeManager) CreatePolicy(ctx context.Context, key string, policy *poli
 	for k, item := range c.policies {
 		if item.IsEnforced {
 			item.IsEnforced = false
-			item.IsLastOne = true
 			c.SetPolicy(ctx, k, item)
 		}
 	}
@@ -209,7 +208,6 @@ func (c *NodeManager) CreatePolicy(ctx context.Context, key string, policy *poli
 		Key:        key,
 		API:        policy,
 		IsEnforced: true,
-		IsLastOne:  false,
 	}
 
 	_, err := c.onosPolicyStore.Put(ctx, key, *policyData, store.Done)

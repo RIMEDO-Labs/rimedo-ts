@@ -63,21 +63,21 @@ func (m *PolicyManager) ReadPolicyObjectFromFileV2(jsonPath string, policyObject
 
 	jsonFile, err := m.LoadPolicyJsonFromFileV2(jsonPath)
 	if err != nil {
-		log.Error("Couldn't read PolicyObject from file")
+		log.Error(" Couldn't read PolicyObject from file ")
 		return err
 	}
 
 	var ok bool
 	ok, err = m.ValidatePolicyJsonSchemaV2(jsonPath)
 	if err != nil {
-		log.Error("Error validating json scheme")
+		log.Error(" Error validating json scheme ")
 		return err
 	}
 	if !ok {
-		return errors.New("the json file is invalid")
+		return errors.New(" the json file is invalid ")
 	}
 	if err = m.UnmarshalPolicyJsonV2(jsonFile, policyObject); err != nil {
-		log.Error("Error unmarshaling json file")
+		log.Error(" Error unmarshaling json file ")
 		return err
 	}
 
@@ -203,7 +203,7 @@ func (m *PolicyManager) AddPolicyV2(policyId string, policyDir string, policyObj
 	policyPath := policyDir + policyId
 	err := m.ReadPolicyObjectFromFileV2(policyPath, policyObject)
 	if err != nil {
-		log.Error(fmt.Sprintf("Couldn't read PolicyObject from file \n policyId: %s from: %s", policyId, policyPath))
+		log.Error(fmt.Sprintf(" Couldn't read PolicyObject from file (policyId: %s; path: %s) ", policyId, policyPath))
 		return nil, err
 	}
 	return policyObject, nil
@@ -215,7 +215,7 @@ func (m *PolicyManager) EnforcePolicyV2(policyId string) bool {
 		(*m.policyMap)[policyId].IsEnforced = true
 		return true
 	}
-	log.Error(fmt.Sprintf("Policy with policyId: %s, not enforced", policyId))
+	log.Error(fmt.Sprintf(" Policy with policyId: %s, not enforced ", policyId))
 	return false
 }
 
@@ -225,7 +225,7 @@ func (m *PolicyManager) DisablePolicyV2(policyId string) bool {
 		(*m.policyMap)[policyId].IsEnforced = false
 		return true
 	}
-	log.Error(fmt.Sprintf("Policy with policyId: %s, not enforced", policyId))
+	log.Error(fmt.Sprintf(" Policy with policyId: %s, not enforced ", policyId))
 	return false
 }
 
@@ -234,7 +234,7 @@ func (m *PolicyManager) GetPolicyV2(policyId string) (*monitoring.PolicyData, bo
 	if val, ok := (*m.policyMap)[policyId]; ok {
 		return val, ok
 	}
-	log.Error(fmt.Sprintf("Policy with policyId: %s, not enforced", policyId))
+	log.Error(fmt.Sprintf(" Policy with policyId: %s, not enforced ", policyId))
 	return nil, false
 }
 
@@ -253,7 +253,7 @@ func (m *PolicyManager) ValidatePolicyJsonSchemaV2(jsonPath string) (bool, error
 func (m *PolicyManager) UnmarshalPolicyJsonV2(jsonFile []byte, policyObject *monitoring.PolicyData) error {
 
 	if err := json.Unmarshal(jsonFile, policyObject.API); err != nil {
-		log.Error("Couldn't read PolicyObject from file")
+		log.Error(" Couldn't read PolicyObject from file ")
 		return err
 	}
 	policyObject.IsEnforced = false
@@ -265,7 +265,7 @@ func (m *PolicyManager) LoadPolicyJsonFromFileV2(path string) ([]byte, error) {
 
 	jsonFile, err := os.Open(path)
 	if err != nil {
-		log.Error("Failed to open policy JSON File")
+		log.Error(" Failed to open policy JSON File ")
 		return nil, err
 	}
 
@@ -273,7 +273,7 @@ func (m *PolicyManager) LoadPolicyJsonFromFileV2(path string) ([]byte, error) {
 
 	byteValue, err := ioutil.ReadAll(jsonFile)
 	if err != nil {
-		log.Error("Failed to read data from policy JSON File")
+		log.Error(" Failed to read data from policy JSON File ")
 		return nil, err
 	}
 	return byteValue, nil

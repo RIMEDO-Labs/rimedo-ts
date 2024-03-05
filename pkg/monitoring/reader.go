@@ -90,7 +90,7 @@ func GetPlmnIdFromMccMnc(mcc string, mnc string, flag bool) (uint64, error) {
 	}
 	plmnId, err := strconv.ParseUint(plmnIdString, 16, 64)
 	if err != nil {
-		log.Warn("Cannot convert PLMN ID string into uint64 type!")
+		log.Warn(" Cannot convert PLMN ID string into uint64 type! ")
 	}
 	return plmnId, err
 }

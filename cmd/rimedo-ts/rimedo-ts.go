@@ -18,7 +18,7 @@ var log = logging.GetLogger("rimedo-ts")
 func main() {
 
 	log.SetLevel(logging.DebugLevel)
-	log.Info("Starting RIMEDO Labs Traffic Steering xAPP - LOCAL")
+	log.Info(" Starting RIMEDO Labs Traffic Steering xAPP - LOCAL ")
 
 	sdranConfig := sdran.Config{
 		AppID:         "rimedo-ts",
@@ -50,6 +50,6 @@ func main() {
 
 	killSignal := make(chan os.Signal, 1)
 	signal.Notify(killSignal, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-	log.Debug("app: received a shutdown signal:", <-killSignal)
+	log.Debug(" Application: received a shutdown signal: ", <-killSignal)
 	mgr.Close()
 }

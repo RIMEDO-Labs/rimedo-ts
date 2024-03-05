@@ -43,7 +43,7 @@ func (m *Monitor) Start(ctx context.Context) error {
 		for {
 			_, err := m.streamReader.Recv(ctx)
 			if err != nil {
-				log.Errorf("Error reading indication stream, chanID:%v, streamID:%v, err:%v", m.streamReader.ChannelID(), m.streamReader.StreamID(), err)
+				log.Errorf(" Error reading indication stream, chanID:%v, streamID:%v, err:%v ", m.streamReader.ChannelID(), m.streamReader.StreamID(), err)
 				errCh <- err
 			}
 			// err = m.processIndication(ctx, indMsg, m.nodeID)

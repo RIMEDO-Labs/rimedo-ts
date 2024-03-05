@@ -227,7 +227,7 @@ func (m *RestManager) TranslateUtfAscii(id string, cell bool) string {
 		temp2 := ascii[len(ascii)-3:]
 		temp3Int, err := strconv.ParseInt(ascii[3:len(ascii)-3], 10, 0)
 		if err != nil {
-			log.Error("UTF-ASCII translation of CGI failed!")
+			log.Error(" UTF-ASCII translation of CGI failed! ")
 		}
 		temp3 := fmt.Sprint(temp3Int)
 		ascii = temp1 + temp3 + temp2
@@ -965,7 +965,7 @@ func (m *RestManager) HandoverControl(ctx context.Context, ueId string, cgi stri
 			_, err = m.RequestData(false, byteReader, "")
 			if err == nil {
 				m.hoActionId++
-				log.Infof("E2 Control Message: UE (ID: %s) has been switched to another Cell (CGI_1: %s -> CGI_2: %s)", ueId, ueData.Cgi, cgi)
+				log.Infof(" E2 Control Message: UE (ID: %s) has been switched to another Cell (CGI_1: %s -> CGI_2: %s) ", ueId, ueData.Cgi, cgi)
 				log.Info("")
 				log.Info("")
 			} else {
@@ -973,14 +973,14 @@ func (m *RestManager) HandoverControl(ctx context.Context, ueId string, cgi stri
 			}
 		} else if serCellData == nil && ueData.Cgi != "" {
 			m.MakeUeIdle(ctx, ueData)
-			err = errors.New(fmt.Sprint(fmt.Errorf("ERROR: UE assigned to not-existing Cell%s", "!")))
+			err = errors.New(fmt.Sprint(fmt.Errorf(" ERROR: UE assigned to not-existing Cell%s", "! ")))
 			return err
 		} else if serCellData != nil && serCellData.Cgi == cgi {
-			err = errors.New(fmt.Sprint(fmt.Errorf("ERROR: trying connect UE with assigned Cell%s", "!")))
+			err = errors.New(fmt.Sprint(fmt.Errorf(" ERROR: trying connect UE with assigned Cell%s", "!")))
 			return err
 		}
 	} else {
-		err = errors.New(fmt.Sprint(fmt.Errorf("ERROR: wrong input data%s", "!")))
+		err = errors.New(fmt.Sprint(fmt.Errorf(" ERROR: wrong input data%s", "!")))
 		return err
 	}
 

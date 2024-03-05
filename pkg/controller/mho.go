@@ -27,7 +27,7 @@ type MHOController struct {
 }
 
 func (m *MHOController) Run(ctx context.Context) {
-	log.Info("MHO controller started")
+	log.Info(" MHO controller started ")
 	go m.controlHandover(ctx)
 }
 
@@ -46,7 +46,7 @@ func (m *MHOController) controlHandover(ctx context.Context) {
 				log.Error(err)
 			}
 			nv := v.Value.(*store.MetricValue)
-			log.Debugf("new event indication message - key: %v, value: %v, event type: %v", e.Key, nv, e.Type)
+			log.Debugf(" new event indication message - key: %v, value: %v, event type: %v ", e.Key, nv, e.Type)
 			if e.EventMHOState.(store.MHOState) == store.StateCreated || e.EventMHOState.(store.MHOState) == store.Denied {
 				// log.Debugf("State changed for %v from %v to %v", key, nv.State.String(), store.Approved)
 				nv.State = store.Approved

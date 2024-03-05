@@ -112,12 +112,12 @@ func (m *Manager) watchE2Connections(ctx context.Context) error {
 			e2NodeID := relation.Relation.TgtEntityID
 
 			if !m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid) {
-				log.Debugf("Received topo event does not have RC RAN function for RIMEDO TS xApp - %v", topoEvent)
+				log.Debugf(" Received topo event does not have RC RAN function for RIMEDO TS xApp - %v ", topoEvent)
 				continue
 			}
 
 			go func() {
-				log.Debugf("start creating subscription %v", topoEvent)
+				log.Debugf(" start creating subscription %v ", topoEvent)
 				err := m.createSubscription(ctx, e2NodeID)
 				if err != nil {
 					log.Warn(err)
@@ -129,7 +129,7 @@ func (m *Manager) watchE2Connections(ctx context.Context) error {
 			relation := topoEvent.Object.Obj.(*topoapi.Object_Relation)
 			e2NodeID := relation.Relation.TgtEntityID
 			if !m.rnibClient.HasRcRANFunction(ctx, e2NodeID, oid) {
-				log.Debugf("Received topo event does not have RC RAN function for MHO - %v", topoEvent)
+				log.Debugf(" Received topo event does not have RC RAN function for MHO - %v ", topoEvent)
 				continue
 			}
 			cellIDs, err := m.rnibClient.GetCells(ctx, e2NodeID)
@@ -137,7 +137,7 @@ func (m *Manager) watchE2Connections(ctx context.Context) error {
 				return err
 			}
 			for _, cellID := range cellIDs {
-				log.Debugf("cell removed, e2NodeID:%v, cellID:%v", e2NodeID, cellID.CellGlobalID.GetValue())
+				log.Debugf(" cell removed, e2NodeID:%v, cellID:%v ", e2NodeID, cellID.CellGlobalID.GetValue())
 			}
 		}
 	}
@@ -176,11 +176,11 @@ func (m *Manager) watchMHOChanges(ctx context.Context, e2nodeID topoapi.ID) {
 				}
 				ue := m.nodeManager.GetUe(ctx, id)
 				if ue == nil {
-					log.Error("There's no such UE")
+					log.Error(" There's no such UE ")
 				}
 				// log.Debugf("send control message for key: %v, value: %v", key, nv)
 				log.Debug("")
-				log.Infof("CONTROL MESSAGE: UE [ID:%v, 5QI:%v] switched to new CELL [CGI:%v]", ueKey, ue.FiveQi, ue.CGI)
+				log.Infof(" CONTROL MESSAGE: UE [ID:%v, 5QI:%v] switched to new CELL [CGI:%v] ", ueKey, ue.FiveQi, ue.CGI)
 				log.Debug("")
 				payload, err := control.CreateRcControlMessage(tgtCellID)
 				if err != nil {
