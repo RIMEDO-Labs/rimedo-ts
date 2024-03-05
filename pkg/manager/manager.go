@@ -138,9 +138,8 @@ func (m *Manager) start() error {
 			if counter == delay {
 				compareLengths()
 				counter = 0
-				show = true
-			} else if counter == delay-1 {
 				prepare = true
+				show = true
 			} else {
 				show = false
 				prepare = false
