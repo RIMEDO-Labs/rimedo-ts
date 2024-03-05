@@ -51,19 +51,21 @@ func NewManager(sdranConfig sdran.Config, a1Config a1.Config, flag bool) *Manage
 	}
 
 	manager := &Manager{
-		sdranManager:   sdranManager,
-		a1Manager:      *a1Manager,
-		topoIDsEnabled: flag,
-		mutex:          sync.RWMutex{},
+		sdranManager:       sdranManager,
+		a1Manager:          *a1Manager,
+		topoIDsEnabled:     flag,
+		mutex:              sync.RWMutex{},
+		handoverControlMap: make(map[string][]string),
 	}
 	return manager
 }
 
 type Manager struct {
-	sdranManager   *sdran.Manager
-	a1Manager      a1.Manager
-	topoIDsEnabled bool
-	mutex          sync.RWMutex
+	sdranManager       *sdran.Manager
+	a1Manager          a1.Manager
+	topoIDsEnabled     bool
+	mutex              sync.RWMutex
+	handoverControlMap map[string][]string
 }
 
 func (m *Manager) Run() {
@@ -387,6 +389,8 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 }
 
 func (m *Manager) deployPolicies(ctx context.Context) {
+
+	m.handoverControlMap = make(map[string][]string)
 	policyManager := m.sdranManager.GetPolicyManager()
 	// restApiManager := m.sdranManager.GetRestApiManager()
 	ues := m.sdranManager.GetUes()
@@ -529,16 +533,49 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 			// 	log.Debug("TARGER CELL (UTF): " + targetCellCGI)
 			// }
 			// log.Debug(keys[i] + " -> " + targetCellCGI)
-			err = m.sdranManager.HandoverControl(ctx, keys[i], targetCellCGI)
-			if err != nil && (strings.Contains(fmt.Sprint(err), "not-existing") || strings.Contains(fmt.Sprint(err), "wrong")) {
-				log.Warn(err)
+
+			// HANDOVER FOR V7.6
+			// err = m.sdranManager.HandoverControl(ctx, keys[i], targetCellCGI)
+			// if err != nil && (strings.Contains(fmt.Sprint(err), "not-existing") || strings.Contains(fmt.Sprint(err), "wrong")) {
+			// 	log.Warn(err)
+			// }
+
+			// TABLE FOR V7.7
+			var array []string
+			if _, ok := m.handoverControlMap[targetCellCGI]; !ok {
+				array = []string{keys[i]}
+			} else {
+				array = m.handoverControlMap[targetCellCGI]
+				array = append(array, keys[i])
 			}
+			m.handoverControlMap[targetCellCGI] = array
+
 		}
 
 		cellIDs = nil
 		rsrps = nil
 
 	}
+
+	if err := m.executeHandoverControl(ctx); err != nil {
+		log.Warn(err)
+	}
+
+}
+
+func (m *Manager) executeHandoverControl(ctx context.Context) error {
+
+	log.Debug("HO Map: " + fmt.Sprint(m.handoverControlMap))
+	for cgi, array := range m.handoverControlMap {
+		for _, ue := range array {
+			err := m.sdranManager.HandoverControl(ctx, ue, cgi)
+			if err != nil && (strings.Contains(fmt.Sprint(err), "not-existing") || strings.Contains(fmt.Sprint(err), "wrong")) {
+				return err
+			}
+		}
+	}
+
+	return nil
 
 }
 
