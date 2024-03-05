@@ -213,7 +213,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 	}
 	if printFlag {
 		// policyObject := m.sdranManager.GetPolicy(ctx, i)
-		info := fmt.Sprintf("POLICY MESSAGE: Policy [ID:%v] applied -> ", policyObject.Key)
+		info := fmt.Sprintf(" POLICY MESSAGE: Policy [ID:%v] applied -> ", policyObject.Key)
 		previous := false
 		if policyObject.API.Scope.SliceID != nil {
 			sliceType := m.sdranManager.GetSstSlice(fmt.Sprint(policyObject.API.Scope.SliceID.Sst), true)

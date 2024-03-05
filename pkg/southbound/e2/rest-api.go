@@ -366,11 +366,11 @@ func (m *RestManager) RequestData(test bool, json interface{}, params string) (*
 			Post(m.url + m.postEndpoint + params)
 	}
 	if err != nil {
-		err = errors.New("ERROR: " + fmt.Sprint(err))
+		err = errors.New(" ERROR: " + fmt.Sprint(err))
 		return nil, err
 	}
 	if response.StatusCode() != 200 {
-		err = errors.New("ERROR: " + fmt.Sprint(response.Status()))
+		err = errors.New(" ERROR: " + fmt.Sprint(response.Status()))
 		return nil, err
 	}
 
@@ -387,7 +387,7 @@ func (m *RestManager) GetLastTest() (string, error) {
 
 	var reply map[string]string
 	if err := m.client.JSONUnmarshal(testList.Body(), &reply); err != nil {
-		_ = errors.New("ERROR: " + fmt.Sprint(err))
+		_ = errors.New(" ERROR: " + fmt.Sprint(err))
 	}
 
 	maxVal := -1
@@ -395,7 +395,7 @@ func (m *RestManager) GetLastTest() (string, error) {
 		if !strings.Contains(key, "e2-load") {
 			val, err := strconv.Atoi(strings.Replace(key, "-simulation", "", -1))
 			if err != nil {
-				err = errors.New("ERROR: " + fmt.Sprint(err))
+				err = errors.New(" ERROR: " + fmt.Sprint(err))
 				return "", err
 			}
 			if maxVal < val {
@@ -413,7 +413,7 @@ func (m *RestManager) GetLastTest() (string, error) {
 		}
 		var dataSet map[string]string
 		if err := m.client.JSONUnmarshal(data.Body(), &dataSet); err != nil {
-			_ = errors.New("ERROR: " + fmt.Sprint(err))
+			_ = errors.New(" ERROR: " + fmt.Sprint(err))
 		}
 		for rKey, rValue := range dataSet {
 			if strings.Contains(rKey, "status") {
@@ -447,7 +447,7 @@ func (m *RestManager) UpdateData() error {
 	// log.Debug(cellResponse)
 	var cellData *ViaviCell
 	if err := m.client.JSONUnmarshal(cellResponse.Body(), &cellData); err != nil {
-		err = errors.New("ERROR: " + fmt.Sprint(err))
+		err = errors.New(" ERROR: " + fmt.Sprint(err))
 		// log.Debug(err)
 		return err
 	}
@@ -461,7 +461,7 @@ func (m *RestManager) UpdateData() error {
 
 	var ueData *ViaviUE
 	if err := m.client.JSONUnmarshal(ueResponse.Body(), &ueData); err != nil {
-		err = errors.New("ERROR: " + fmt.Sprint(err))
+		err = errors.New(" ERROR: " + fmt.Sprint(err))
 		return err
 	}
 	// log.Debug("Passed ue data unmarshalling")
@@ -558,7 +558,7 @@ func (m *RestManager) CreateUe(ctx context.Context, id string, cgi string, rrcSt
 	}
 	_, err := m.ueStore.Put(ctx, id, *ueData, store.Done)
 	if err != nil {
-		err = errors.New("ERROR: " + fmt.Sprint(err))
+		err = errors.New(" ERROR: " + fmt.Sprint(err))
 		return nil, err
 	}
 	m.ueObjects[ueData.Id] = ueData
@@ -576,7 +576,7 @@ func (m *RestManager) GetUe(ctx context.Context, id string) (*UeData, error) {
 	}
 	t := ue.Value.(UeData)
 	if t.Id != id {
-		err = errors.New(fmt.Sprint(fmt.Errorf("ERROR: wrong input data%s", "!")))
+		err = errors.New(fmt.Sprint(fmt.Errorf(" ERROR: wrong input data%s ", "!")))
 		return nil, err
 	}
 	ueData = &t
@@ -590,13 +590,13 @@ func (m *RestManager) SetUe(ctx context.Context, ueData *UeData) error {
 	var err error
 
 	if len(ueData.Id) == 0 {
-		err = errors.New(fmt.Sprint(fmt.Errorf("ERROR: wrong input data%s", "!")))
+		err = errors.New(fmt.Sprint(fmt.Errorf(" ERROR: wrong input data%s ", "!")))
 		return err
 	}
 
 	_, err = m.ueStore.Put(ctx, ueData.Id, *ueData, store.Done)
 	if err != nil {
-		err = errors.New(fmt.Sprint(fmt.Errorf("ERROR: wrong input data%s", "!")))
+		err = errors.New(fmt.Sprint(fmt.Errorf(" ERROR: wrong input data%s ", "!")))
 		return err
 	}
 
@@ -755,7 +755,7 @@ func (m *RestManager) CreateCell(ctx context.Context, cgi string) (*CellData, er
 
 	_, err := m.cellStore.Put(ctx, cgi, *cellData, store.Done)
 	if err != nil {
-		err = errors.New("ERROR: " + fmt.Sprint(err))
+		err = errors.New(" ERROR: " + fmt.Sprint(err))
 		return nil, err
 	}
 	m.cellObjects[cellData.Cgi] = cellData
@@ -774,7 +774,7 @@ func (m *RestManager) GetCell(ctx context.Context, cgi string) (*CellData, error
 	}
 	t := cell.Value.(CellData)
 	if t.Cgi != cgi {
-		err = errors.New(fmt.Sprint(fmt.Errorf("ERROR: wrong input data%s", "!")))
+		err = errors.New(fmt.Sprint(fmt.Errorf(" ERROR: wrong input data%s ", "!")))
 		return nil, err
 	}
 	cellData = &t
@@ -788,13 +788,13 @@ func (m *RestManager) SetCell(ctx context.Context, cellData *CellData) error {
 	var err error
 
 	if len(cellData.Cgi) == 0 {
-		err = errors.New(fmt.Sprint(fmt.Errorf("ERROR: wrong input data%s", "!")))
+		err = errors.New(fmt.Sprint(fmt.Errorf(" ERROR: wrong input data%s ", "!")))
 		return err
 	}
 
 	_, err = m.cellStore.Put(ctx, cellData.Cgi, *cellData, store.Done)
 	if err != nil {
-		err = errors.New("ERROR: " + fmt.Sprint(err))
+		err = errors.New(" ERROR: " + fmt.Sprint(err))
 		return err
 	}
 
@@ -827,7 +827,7 @@ func (m *RestManager) GetUeInfo(ctx context.Context) error {
 		}
 		var data *ViaviUE
 		if err = m.client.JSONUnmarshal(response.Body(), &data); err != nil {
-			err = errors.New("ERROR: " + fmt.Sprint(err))
+			err = errors.New(" ERROR: " + fmt.Sprint(err))
 			return err
 		}
 
@@ -841,22 +841,22 @@ func (m *RestManager) GetUeInfo(ctx context.Context) error {
 		rrcState = "Connected"
 		fiveQi = fmt.Sprint(data.GetUeParameter(ueId, "Viavi.QoS.5qi"))
 		if strings.Contains(fiveQi, "Error") {
-			err = errors.New("ERROR: " + fmt.Sprint(fiveQi))
+			err = errors.New(" ERROR: " + fmt.Sprint(fiveQi))
 			return err
 		}
 		slice = fmt.Sprint(data.GetUeParameter(ueId, "Viavi.UE.Slice"))
 		if strings.Contains(slice, "Error") {
-			err = errors.New("ERROR: " + fmt.Sprint(slice))
+			err = errors.New(" ERROR: " + fmt.Sprint(slice))
 			return err
 		}
 		servingCell = fmt.Sprint(data.GetUeParameter(ueId, "Viavi.Cell.Name"))
 		if strings.Contains(servingCell, "Error") {
-			err = errors.New("ERROR: " + fmt.Sprint(servingCell))
+			err = errors.New(" ERROR: " + fmt.Sprint(servingCell))
 			return err
 		}
 		servingRsrp = fmt.Sprint(data.GetUeParameter(ueId, "Viavi.UE.Rsrp"))
 		if strings.Contains(servingRsrp, "Error") {
-			err = errors.New("ERROR: " + fmt.Sprint(servingRsrp))
+			err = errors.New(" ERROR: " + fmt.Sprint(servingRsrp))
 			return err
 		}
 		rsrpTab[servingCell] = servingRsrp
@@ -884,18 +884,18 @@ func (m *RestManager) GetUeInfo(ctx context.Context) error {
 					}
 					var data *ViaviUE
 					if err := m.client.JSONUnmarshal(response.Body(), &data); err != nil {
-						err = errors.New("ERROR: " + fmt.Sprint(err))
+						err = errors.New(" ERROR: " + fmt.Sprint(err))
 						return err
 					}
 					if data != nil {
 						neighbourCell := fmt.Sprint(data.GetUeParameter(ueId, "Viavi.Cell.Name"))
 						if strings.Contains(neighbourCell, "Error") {
-							err = errors.New("ERROR: " + fmt.Sprint(neighbourCell))
+							err = errors.New(" ERROR: " + fmt.Sprint(neighbourCell))
 							return err
 						}
 						neighbourRsrp := fmt.Sprint(data.GetUeParameter(ueId, "Viavi.UE.Rsrp"))
 						if strings.Contains(neighbourRsrp, "Error") {
-							err = errors.New("ERROR: " + fmt.Sprint(neighbourRsrp))
+							err = errors.New(" ERROR: " + fmt.Sprint(neighbourRsrp))
 							return err
 						}
 						rsrpTab[neighbourCell] = neighbourRsrp

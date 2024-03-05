@@ -91,7 +91,7 @@ func (o *ViaviUE) GetUeParameter(id string, param string) string {
 		}
 	}
 
-	return "Error: wrong input data!"
+	return " ERROR: wrong input data! "
 
 }
 
@@ -110,6 +110,6 @@ func (o *ViaviCell) GetCellParameter(id string, param string) string {
 		}
 	}
 
-	return "Error: wrong input data!"
+	return " ERROR: wrong input data! "
 
 }
