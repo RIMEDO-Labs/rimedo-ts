@@ -177,8 +177,8 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 			newMap = append(newMap, item)
 		}
 	}
-	log.Debug("ENF ARRAY: " + fmt.Sprint(*enfArray))
-	log.Debug("NEW ARRAY: " + fmt.Sprint(newMap))
+	// log.Debug("ENF ARRAY: " + fmt.Sprint(*enfArray))
+	// log.Debug("NEW ARRAY: " + fmt.Sprint(newMap))
 
 	// log.Debug("POLICY MAP: " + fmt.Sprint(policyMap))
 	// log.Debug("RECEIVED: " + received)
@@ -186,12 +186,12 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 	if _, ok := policyMap[received]; !ok {
 		m.sdranManager.DeletePolicy(ctx, received)
 		log.Infof("POLICY MESSAGE: Policy [ID:%v] deleted\n", received)
-		policyObject = m.sdranManager.GetPolicy(ctx, (*enfArray)[len(*enfArray)-1])
-		log.Debug("Policy Keys: ")
-		policies := m.sdranManager.GetPolicies(ctx)
-		for key, _ := range policies {
-			log.Debug(key)
-		}
+		policyObject = m.sdranManager.GetPolicy(ctx, newMap[len(newMap)-1])
+		// log.Debug("Policy Keys: ")
+		// policies := m.sdranManager.GetPolicies(ctx)
+		// for key, _ := range policies {
+		// 	log.Debug(key)
+		// }
 		if policyObject != nil {
 			policyObject.IsEnforced = true
 			m.sdranManager.SetPolicy(ctx, policyObject.Key, policyObject)
