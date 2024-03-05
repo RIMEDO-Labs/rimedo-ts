@@ -965,7 +965,7 @@ func (m *RestManager) HandoverControl(ctx context.Context, ueId string, cgi stri
 			_, err = m.RequestData(false, byteReader, "")
 			if err == nil {
 				m.hoActionId++
-				log.Infof(" E2 Control Message: UE (ID: %s) has been switched to another Cell (CGI_1: %s -> CGI_2: %s) ", ueId, ueData.Cgi, cgi)
+				log.Infof(" CONTROL MESSAGE: UE (ID: %s) has been switched to another Cell (CGI_1: %s -> CGI_2: %s) ", ueId, ueData.Cgi, cgi)
 				log.Info("")
 				// log.Info("")
 			} else {
