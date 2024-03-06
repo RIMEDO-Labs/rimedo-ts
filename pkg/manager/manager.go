@@ -208,6 +208,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 		r, err := policyAPI.UnmarshalAPI(policyMap[received])
 		if err == nil {
 			// *defaultFlag = false
+			m.substituteCellId(&r)
 			newMap = append(newMap, received)
 			policyObject = m.sdranManager.CreatePolicy(ctx, received, &r)
 			printFlag = true
@@ -738,6 +739,36 @@ func (m *Manager) CgiFromTopoToIndicationFormat(cgi string) string {
 		cgi = cgi[0:6] + cgi[13:15] + cgi[11:13] + cgi[9:11] + cgi[7:9] + cgi[6:7]
 	}
 	return cgi
+}
+
+func (m *Manager) substituteCellId(policy *policyAPI.API) {
+  for rIdx, _ := range policy.TSPResources {
+    for cIdx, cellId := range policy.TSPResources[rIdx].CellIDList {
+      var eNci int64
+      if cellId.CID.NcI != nil {
+        eNci = *cellId.CID.NcI
+      } else if cellId.CID.EcI != nil {
+        eNci = *cellId.CID.EcI
+      }
+      cgi, err := m.sdranManager.GetCellName(uint64(eNci))
+      if err != nil {
+        log.Error("Cell NCI not in map", err)
+        return
+      }
+      temp := m.sdranManager.GetUtfAscii(cgi, true, true)
+      mcc := temp[len(temp)-3:]
+      mnc := temp[:3]
+      nci, err := strconv.ParseInt(temp[3:len(temp)-3], 10, 64)
+      if err != nil {
+        log.Error(" Something went wrong! ")
+        return
+      }
+      cellId.CID.NcI = &nci
+      cellId.PlmnID.Mcc = mcc
+      cellId.PlmnID.Mnc = mnc
+      policy.TSPResources[rIdx].CellIDList[cIdx] = cellId
+    }
+  }
 }
 
 func drawWithLine(word string, length int) {
