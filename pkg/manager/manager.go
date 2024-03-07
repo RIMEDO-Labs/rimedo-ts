@@ -567,20 +567,86 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 
 }
 
+type HandoverData struct {
+  ue string
+  cgi string
+}
+
+func handoverDataGenerator(handoverControlMap map[string][]string, c chan HandoverData) {
+  for cgi, array := range handoverControlMap {
+    for _, ue := range array {
+      c <- HandoverData{ ue, cgi }
+    }
+  }
+  close(c)
+}
+
+func (m *Manager) do_handover(ctx context.Context, data HandoverData, c chan error) {
+  err := m.sdranManager.HandoverControl(ctx, data.ue, data.cgi)
+  if err != nil && (strings.Contains(fmt.Sprint(err), "not-existing") || strings.Contains(fmt.Sprint(err), "wrong")) {
+    c <- err
+  } else {
+    c <- nil
+  }
+}
+
 func (m *Manager) executeHandoverControl(ctx context.Context) error {
+  const job_limit = 10
 
-	// log.Debug("HO Map: " + fmt.Sprint(m.handoverControlMap))
-	for cgi, array := range m.handoverControlMap {
-		for _, ue := range array {
-			err := m.sdranManager.HandoverControl(ctx, ue, cgi)
-			if err != nil && (strings.Contains(fmt.Sprint(err), "not-existing") || strings.Contains(fmt.Sprint(err), "wrong")) {
-				return err
-			}
-		}
-	}
+  ho_data_chan := make(chan HandoverData)
+  go handoverDataGenerator(m.handoverControlMap, ho_data_chan)
 
-	return nil
+  ho_count := 0
+	for _, array := range m.handoverControlMap {
+    ho_count += len(array)
+  }
 
+  var jobs []chan error
+  ho_idx := 0
+  // starting initial batch of jobs
+  for (ho_idx < job_limit) && (ho_idx < ho_count) {
+    job := make(chan error)
+    jobs = append(jobs, job)
+    ho_data, ok := <- ho_data_chan
+    if !ok {
+      return fmt.Errorf("Should not be here")
+    }
+    go m.do_handover(ctx, ho_data, job)
+    ho_idx++
+  }
+
+  idx := 0
+  finished_jobs := 0
+  for {
+    idx = idx % len(jobs)
+    select {
+      case err, ok := <- jobs[idx]:
+        if ok {
+          if err != nil {
+            return err
+          }
+          finished_jobs++
+          if ho_idx < ho_count {
+            new_job := make(chan error)
+            jobs[idx] = new_job
+            ho_data, ok := <- ho_data_chan
+            if !ok {
+              return fmt.Errorf("Should not be here either")
+            }
+            go m.do_handover(ctx, ho_data, new_job)
+            ho_idx++
+          }
+        }
+      default:
+        time.Sleep(100 * time.Millisecond)
+    }
+    idx++
+    if finished_jobs == ho_count {
+      break
+    }
+  }
+
+  return nil
 }
 
 func (m *Manager) checkPolicies(ctx context.Context, defaultFlag *bool, showFlag bool, prepareFlag bool) {
