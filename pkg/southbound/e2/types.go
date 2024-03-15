@@ -1,6 +1,9 @@
 package e2
 
-import "fmt"
+import (
+  "fmt"
+  "github.com/tidwall/gjson"
+)
 
 type ViaviUE struct {
 	Results []struct {
@@ -42,6 +45,42 @@ type UeData struct {
 type CellData struct {
 	Cgi   string
 	UeTab map[string]string
+}
+
+func (o *ViaviCell) GetViaviCgiCellMap(bytes []byte) map[uint64]string {
+
+  cellMap := make(map[uint64]string)
+
+  cell_names := gjson.Get(string(bytes), "results.#.series.#.tags.Viavi\\.Cell\\.Name")
+  if len(cell_names.Array()) == 0 {
+    return cellMap
+  }
+  cell_names = cell_names.Array()[0]
+
+  cell_nrcgis := gjson.Get(string(bytes), "results.#.series.#.values.#.[33]")
+  if len(cell_nrcgis.Array()) == 0 {
+    return cellMap
+  }
+  cell_nrcgis = cell_nrcgis.Array()[0]
+
+  if len(cell_nrcgis.Array()) != len(cell_names.Array()) {
+    return cellMap
+  }
+
+  for idx, cell_nrcgi := range cell_nrcgis.Array() {
+    if len(cell_nrcgi.Array()) == 0 {
+      continue
+    }
+    inner_nrcgi := cell_nrcgi.Array()[0]
+    if len(inner_nrcgi.Array()) == 0 {
+      continue
+    }
+    inner_nrcgi = inner_nrcgi.Array()[0]
+    cellMap[uint64(inner_nrcgi.Int())] = cell_names.Array()[idx].String()
+  }
+
+  return cellMap
+
 }
 
 func (o *ViaviCell) ListCellIDs() map[int]string {

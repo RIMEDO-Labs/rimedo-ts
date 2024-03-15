@@ -70,6 +70,7 @@ func NewRestManager(ueStore store.Store, cellStore store.Store) *RestManager {
 		cellAsciiUtf:  make(map[string]string),
 		cellUtfAscii:  make(map[string]string),
 		cellList:      make(map[int]string),
+		viaviCgiCellMap: make(map[uint64]string),
 		ueList:        make(map[int]string),
 		cellObjects:   make(map[string]*CellData),
 		ueObjects:     make(map[string]*UeData),
@@ -98,6 +99,7 @@ type RestManager struct {
 	cellAsciiUtf  map[string]string
 	cellUtfAscii  map[string]string
 	cellList      map[int]string
+	viaviCgiCellMap map[uint64]string
 	ueList        map[int]string
 	cellObjects   map[string]*CellData
 	ueObjects     map[string]*UeData
@@ -469,6 +471,7 @@ func (m *RestManager) UpdateData() error {
 	m.lastTimestamp = fmt.Sprint(ueData.Results[0].Series[0].Values[0][0])
 
 	m.cellList = cellData.ListCellIDs()
+	m.viaviCgiCellMap = cellData.GetViaviCgiCellMap(cellResponse.Body())
 	m.ueList = ueData.ListUeIDs()
 
 	return nil
@@ -1002,4 +1005,17 @@ func (m *RestManager) Run(ctx context.Context) error {
 	// log.Debug("DATA UPDATED!")
 	return nil
 
+}
+
+func (m *RestManager) GetCellName(cgi uint64) (string, error) {
+  stringCgi := fmt.Sprintf("%x", cgi)
+	viaviCgi, err := strconv.ParseUint("62f030" + stringCgi, 16, 64)
+  if err != nil {
+    return "", errors.New(fmt.Sprint(fmt.Errorf(" ERROR: wrong input data, cannot convert %v", cgi)))
+  }
+  name, ok := m.viaviCgiCellMap[viaviCgi]
+  if !ok {
+    return "", errors.New(fmt.Sprint(fmt.Errorf(" ERROR: wrong input data %v", cgi)))
+  }
+  return name, nil
 }

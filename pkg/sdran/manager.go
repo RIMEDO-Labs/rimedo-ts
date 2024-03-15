@@ -382,6 +382,10 @@ func (m *Manager) IfObjectsCreated() bool {
 
 }
 
+func (m *Manager) GetCellName(cgi uint64) (string, error) {
+  return m.restApiManager.GetCellName(cgi)
+}
+
 // func (m *Manager) SwitchUeBetweenCells(ctx context.Context, ueID string, targetCellCGI string) error {
 
 // 	m.mutex.Lock()

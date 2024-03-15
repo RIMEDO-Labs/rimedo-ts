@@ -208,6 +208,7 @@ func (m *Manager) updatePolicies(ctx context.Context, policyMap map[string][]byt
 		r, err := policyAPI.UnmarshalAPI(policyMap[received])
 		if err == nil {
 			// *defaultFlag = false
+			m.substituteCellId(&r)
 			newMap = append(newMap, received)
 			policyObject = m.sdranManager.CreatePolicy(ctx, received, &r)
 			printFlag = true
@@ -566,20 +567,86 @@ func (m *Manager) deployPolicies(ctx context.Context) {
 
 }
 
+type HandoverData struct {
+  ue string
+  cgi string
+}
+
+func handoverDataGenerator(handoverControlMap map[string][]string, c chan HandoverData) {
+  for cgi, array := range handoverControlMap {
+    for _, ue := range array {
+      c <- HandoverData{ ue, cgi }
+    }
+  }
+  close(c)
+}
+
+func (m *Manager) do_handover(ctx context.Context, data HandoverData, c chan error) {
+  err := m.sdranManager.HandoverControl(ctx, data.ue, data.cgi)
+  if err != nil && (strings.Contains(fmt.Sprint(err), "not-existing") || strings.Contains(fmt.Sprint(err), "wrong")) {
+    c <- err
+  } else {
+    c <- nil
+  }
+}
+
 func (m *Manager) executeHandoverControl(ctx context.Context) error {
+  const job_limit = 10
 
-	// log.Debug("HO Map: " + fmt.Sprint(m.handoverControlMap))
-	for cgi, array := range m.handoverControlMap {
-		for _, ue := range array {
-			err := m.sdranManager.HandoverControl(ctx, ue, cgi)
-			if err != nil && (strings.Contains(fmt.Sprint(err), "not-existing") || strings.Contains(fmt.Sprint(err), "wrong")) {
-				return err
-			}
-		}
-	}
+  ho_data_chan := make(chan HandoverData)
+  go handoverDataGenerator(m.handoverControlMap, ho_data_chan)
 
-	return nil
+  ho_count := 0
+	for _, array := range m.handoverControlMap {
+    ho_count += len(array)
+  }
 
+  var jobs []chan error
+  ho_idx := 0
+  // starting initial batch of jobs
+  for (ho_idx < job_limit) && (ho_idx < ho_count) {
+    job := make(chan error)
+    jobs = append(jobs, job)
+    ho_data, ok := <- ho_data_chan
+    if !ok {
+      return fmt.Errorf("Should not be here")
+    }
+    go m.do_handover(ctx, ho_data, job)
+    ho_idx++
+  }
+
+  idx := 0
+  finished_jobs := 0
+  for {
+    idx = idx % len(jobs)
+    select {
+      case err, ok := <- jobs[idx]:
+        if ok {
+          if err != nil {
+            return err
+          }
+          finished_jobs++
+          if ho_idx < ho_count {
+            new_job := make(chan error)
+            jobs[idx] = new_job
+            ho_data, ok := <- ho_data_chan
+            if !ok {
+              return fmt.Errorf("Should not be here either")
+            }
+            go m.do_handover(ctx, ho_data, new_job)
+            ho_idx++
+          }
+        }
+      default:
+        time.Sleep(100 * time.Millisecond)
+    }
+    idx++
+    if finished_jobs == ho_count {
+      break
+    }
+  }
+
+  return nil
 }
 
 func (m *Manager) checkPolicies(ctx context.Context, defaultFlag *bool, showFlag bool, prepareFlag bool) {
@@ -738,6 +805,36 @@ func (m *Manager) CgiFromTopoToIndicationFormat(cgi string) string {
 		cgi = cgi[0:6] + cgi[13:15] + cgi[11:13] + cgi[9:11] + cgi[7:9] + cgi[6:7]
 	}
 	return cgi
+}
+
+func (m *Manager) substituteCellId(policy *policyAPI.API) {
+  for rIdx, _ := range policy.TSPResources {
+    for cIdx, cellId := range policy.TSPResources[rIdx].CellIDList {
+      var eNci int64
+      if cellId.CID.NcI != nil {
+        eNci = *cellId.CID.NcI
+      } else if cellId.CID.EcI != nil {
+        eNci = *cellId.CID.EcI
+      }
+      cgi, err := m.sdranManager.GetCellName(uint64(eNci))
+      if err != nil {
+        log.Error("Cell NCI not in map", err)
+        return
+      }
+      temp := m.sdranManager.GetUtfAscii(cgi, true, true)
+      mcc := temp[len(temp)-3:]
+      mnc := temp[:3]
+      nci, err := strconv.ParseInt(temp[3:len(temp)-3], 10, 64)
+      if err != nil {
+        log.Error(" Something went wrong! ")
+        return
+      }
+      cellId.CID.NcI = &nci
+      cellId.PlmnID.Mcc = mcc
+      cellId.PlmnID.Mnc = mnc
+      policy.TSPResources[rIdx].CellIDList[cIdx] = cellId
+    }
+  }
 }
 
 func drawWithLine(word string, length int) {
